@@ -123,11 +123,11 @@ namespace CSharpNoise
 
 
             // this is the quadratic part. Removing this gives you pure Perlin Noise. 
-#if false
-            llGrad = VUtil.MultiplyAddEstimate(llGrad, llGrad * (llHash << GradShift3).As<int, float>(), llGrad);
-            lrGrad = VUtil.MultiplyAddEstimate(lrGrad, lrGrad * (lrHash << GradShift3).As<int, float>(), lrGrad);
-            ulGrad = VUtil.MultiplyAddEstimate(ulGrad, ulGrad * (ulHash << GradShift3).As<int, float>(), ulGrad);
-            urGrad = VUtil.MultiplyAddEstimate(urGrad, urGrad * (urHash << GradShift3).As<int, float>(), urGrad);
+#if true
+            llGrad = Util.MultiplyAddEstimate(llGrad, llGrad * (llHash << GradShift3).As<int, float>(), llGrad);
+            lrGrad = Util.MultiplyAddEstimate(lrGrad, lrGrad * (lrHash << GradShift3).As<int, float>(), lrGrad);
+            ulGrad = Util.MultiplyAddEstimate(ulGrad, ulGrad * (ulHash << GradShift3).As<int, float>(), ulGrad);
+            urGrad = Util.MultiplyAddEstimate(urGrad, urGrad * (urHash << GradShift3).As<int, float>(), urGrad);
 #endif
 
             Float sx = fx * fx * fx * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fx, Util.Create(6f), Util.Create(-15f)), fx, Util.Create(10f));
@@ -176,6 +176,7 @@ namespace CSharpNoise
             Int GradAndMask = Util.Create(unchecked((int)0b11000000001100000000100000000111));
             Int GradOrMask = Util.Create(unchecked((int)0b00011111100001111110001111110000));
 
+#if false
             llbHash = (llbHash & GradAndMask) | GradOrMask;
             lrbHash = (lrbHash & GradAndMask) | GradOrMask;
             ulbHash = (ulbHash & GradAndMask) | GradOrMask;
@@ -184,6 +185,7 @@ namespace CSharpNoise
             lrfHash = (lrfHash & GradAndMask) | GradOrMask;
             ulfHash = (ulfHash & GradAndMask) | GradOrMask;
             urfHash = (urfHash & GradAndMask) | GradOrMask;
+#endif
 
             const int GradShift1 = 1, GradShift2 = 20, GradShift3 = 11;
             Float negOne = Util.Create(-1f);
@@ -235,12 +237,16 @@ namespace CSharpNoise
             Float ufLerp = Util.MultiplyAddEstimate(urfGrad - ulfGrad, sx, ulfGrad);
 
             // this is the quadratic part. Removing this gives you pure Perlin Noise. 
-            //llGrad = VUtil.MultiplyAddEstimate(llGrad, llGrad * (llHash << GradShift3).AsFloat(), llGrad);
-            //lrGrad = VUtil.MultiplyAddEstimate(lrGrad, lrGrad * (lrHash << GradShift3).AsFloat(), lrGrad);
-            //ulGrad = VUtil.MultiplyAddEstimate(ulGrad, ulGrad * (ulHash << GradShift3).AsFloat(), ulGrad);
-            //urGrad = VUtil.MultiplyAddEstimate(urGrad, urGrad * (urHash << GradShift3).AsFloat(), urGrad);
+            llfGrad = Util.MultiplyAddEstimate(llfGrad, llfGrad * (llfHash << GradShift3).AsFloat(), llfGrad);
+            lrfGrad = Util.MultiplyAddEstimate(lrfGrad, lrfGrad * (lrfHash << GradShift3).AsFloat(), lrfGrad);
+            ulfGrad = Util.MultiplyAddEstimate(ulfGrad, ulfGrad * (ulfHash << GradShift3).AsFloat(), ulfGrad);
+            urfGrad = Util.MultiplyAddEstimate(urfGrad, urfGrad * (urfHash << GradShift3).AsFloat(), urfGrad);
+            llbGrad = Util.MultiplyAddEstimate(llbGrad, llbGrad * (llbHash << GradShift3).AsFloat(), llbGrad);
+            lrbGrad = Util.MultiplyAddEstimate(lrbGrad, lrbGrad * (lrbHash << GradShift3).AsFloat(), lrbGrad);
+            ulbGrad = Util.MultiplyAddEstimate(ulbGrad, ulbGrad * (ulbHash << GradShift3).AsFloat(), ulbGrad);
+            urbGrad = Util.MultiplyAddEstimate(urbGrad, urbGrad * (urbHash << GradShift3).AsFloat(), urbGrad);
 
-           
+
             Float bLerp = Util.MultiplyAddEstimate(ubLerp - lbLerp, sy, lbLerp);
             Float fLerp = Util.MultiplyAddEstimate(ufLerp - lfLerp, sy, lfLerp);
 

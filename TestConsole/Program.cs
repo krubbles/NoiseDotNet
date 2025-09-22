@@ -57,25 +57,25 @@ Console.ReadLine();
 
 public class Benchmark
 {
-    CoordinateGrid coordGrid;
     float[] xArray, yArray, zArray;
     float[] result;
 
     [GlobalSetup]
     public void Setup()
     {
-        coordGrid = new() { xStart = 0, yStart = 0, xStep = 1f, yStep = 1f, height = 600, width = 1200 };
-        result  = new float[coordGrid.width * coordGrid.height];
-        xArray = new float[coordGrid.width * coordGrid.height];
+
+        int width = 600, height = 1200;
+        result  = new float[width * height];
+        xArray = new float[width * height];
         yArray = new float[xArray.Length];
         zArray = new float[xArray.Length];
         int index = 0;
-        for (int y = 0; y < coordGrid.height; ++y)
-            for (int x = 0; x < coordGrid.width; ++x)
+        for (int y = 0; y < height; ++y)
+            for (int x = 0; x < width; ++x)
             {
                 xArray[index] = x;
                 yArray[index] = y;
-                xArray[index++] = 0;
+                zArray[index++] = 0;
             }
     }
 
