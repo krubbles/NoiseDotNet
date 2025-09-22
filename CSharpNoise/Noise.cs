@@ -176,7 +176,6 @@ namespace CSharpNoise
             Int GradAndMask = Util.Create(unchecked((int)0b11000000001100000000100000000111));
             Int GradOrMask = Util.Create(unchecked((int)0b00011111100001111110001111110000));
 
-#if false
             llbHash = (llbHash & GradAndMask) | GradOrMask;
             lrbHash = (lrbHash & GradAndMask) | GradOrMask;
             ulbHash = (ulbHash & GradAndMask) | GradOrMask;
@@ -185,7 +184,6 @@ namespace CSharpNoise
             lrfHash = (lrfHash & GradAndMask) | GradOrMask;
             ulfHash = (ulfHash & GradAndMask) | GradOrMask;
             urfHash = (urfHash & GradAndMask) | GradOrMask;
-#endif
 
             const int GradShift1 = 1, GradShift2 = 20, GradShift3 = 11;
             Float negOne = Util.Create(-1f);
@@ -237,6 +235,7 @@ namespace CSharpNoise
             Float ufLerp = Util.MultiplyAddEstimate(urfGrad - ulfGrad, sx, ulfGrad);
 
             // this is the quadratic part. Removing this gives you pure Perlin Noise. 
+#if true
             llfGrad = Util.MultiplyAddEstimate(llfGrad, llfGrad * (llfHash << GradShift3).AsFloat(), llfGrad);
             lrfGrad = Util.MultiplyAddEstimate(lrfGrad, lrfGrad * (lrfHash << GradShift3).AsFloat(), lrfGrad);
             ulfGrad = Util.MultiplyAddEstimate(ulfGrad, ulfGrad * (ulfHash << GradShift3).AsFloat(), ulfGrad);
@@ -245,13 +244,62 @@ namespace CSharpNoise
             lrbGrad = Util.MultiplyAddEstimate(lrbGrad, lrbGrad * (lrbHash << GradShift3).AsFloat(), lrbGrad);
             ulbGrad = Util.MultiplyAddEstimate(ulbGrad, ulbGrad * (ulbHash << GradShift3).AsFloat(), ulbGrad);
             urbGrad = Util.MultiplyAddEstimate(urbGrad, urbGrad * (urbHash << GradShift3).AsFloat(), urbGrad);
-
+#endif
 
             Float bLerp = Util.MultiplyAddEstimate(ubLerp - lbLerp, sy, lbLerp);
             Float fLerp = Util.MultiplyAddEstimate(ufLerp - lfLerp, sy, lfLerp);
 
             Float result = Util.MultiplyAddEstimate(fLerp - bLerp, sz, bLerp);
             return result;
+        }
+
+        static (Float centerDist, Float edgeDist, Float random) CellularNoise2D(Float x, Float y, Int seed)
+        {
+            Float xFloor = Util.Floor(x);
+            Float yFloor = Util.Floor(y);
+            Int ix = Util.ConvertToInt32Native(xFloor);
+            Int iy = Util.ConvertToInt32Native(yFloor);
+            Float fx = x - xFloor;
+            Float fy = y - yFloor;
+
+            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987);
+
+            Int centerHash = ix * ConstX + iy * ConstY + seed;
+
+            Float d1 = Util.Create(2f), d2 = Util.Create(2f), r = default;
+            Float one = Util.Create(1f), two = Util.Create(2f);
+            SingleCell(centerHash + ConstY, fx + one, fy, ref d1, ref d2);
+            SingleCell(centerHash + ConstY + ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell(centerHash + ConstY - ConstX, fx, fy, ref d1, ref d2);
+            fy += one;
+            SingleCell(centerHash, fx + one, fy, ref d1, ref d2);
+            SingleCell(centerHash + ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell(centerHash - ConstX, fx, fy, ref d1, ref d2);
+            fy += one;
+            SingleCell(centerHash - ConstY, fx + one, fy, ref d1, ref d2);
+            SingleCell(centerHash - ConstY + ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell(centerHash - ConstY - ConstX, fx, fy, ref d1, ref d2);
+
+            d1 = Util.SquareRoot(d1);
+            d2 = Util.SquareRoot(d2);
+            return (d1, d2 - d1, r);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static void SingleCell(Int hash, Float fx, Float fy, ref Float d1, ref Float d2)
+        {
+            Int ConstXOR = Util.Create(203663684);
+            hash *= hash ^ ConstXOR;
+            Int AndMask = Util.Create(unchecked((int)0b00000000011100000000011111111111));
+            Int OrMask  = Util.Create(unchecked((int)0b00111111100000111111100000000000));
+            hash = (hash & AndMask) | OrMask;
+            Float dx = fx - Util.AsVectorSingle(hash);
+            Float dy = fy - Util.AsVectorSingle(hash << 12);
+            Float d = Util.MultiplyAddEstimate(dx, dx, dy * dy);
+            Int smallest = Util.LessThan(d, d1);
+            Int secondSmallest = Util.AndNot(Util.LessThan(d, d2), smallest);
+            d1 = Util.ConditionalSelect(smallest, d, d1);
+            d2 = Util.ConditionalSelect(secondSmallest, d, d2);
         }
 
 #if VECTOR

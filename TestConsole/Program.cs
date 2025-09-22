@@ -2,7 +2,6 @@
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Attributes;
 
-BenchmarkRunner.Run<Benchmark>();
 int width = 120, height = 100;
 float[] result = new float[width * height];
 if (true) ;
@@ -22,17 +21,19 @@ if (true) ;
 
     Noise.QuadraticNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1, result);
 }
+BenchmarkRunner.Run<Benchmark>();
 
-    /*
-    for (int i = 0; i < 20; ++i)
-    {
-        Console.WriteLine(Profiler.ProfileRelative("QN2D vs Itself", 3000,
-            () => NetCoreNoise.QuadraticNoise2D(coordGrid, 0.1f, 1f, 1, result),
-            () => NetCoreNoise.QuadraticNoise2D(coordGrid, 0.1f, 1f, 1, result)));
-    }
-    */
 
-    int index = 0;
+/*
+for (int i = 0; i < 20; ++i)
+{
+    Console.WriteLine(Profiler.ProfileRelative("QN2D vs Itself", 3000,
+        () => NetCoreNoise.QuadraticNoise2D(coordGrid, 0.1f, 1f, 1, result),
+        () => NetCoreNoise.QuadraticNoise2D(coordGrid, 0.1f, 1f, 1, result)));
+}
+*/
+
+int index = 0;
 for (int y = 0; y < 100; ++y)
 {
     System.Text.StringBuilder b = new();
