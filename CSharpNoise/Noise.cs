@@ -1,47 +1,300 @@
-﻿#if NETCOREAPP
+﻿#define VECTOR
+using System.Runtime.CompilerServices;
 using System.Numerics;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.Intrinsics;
+#if VECTOR
+using Int =  System.Numerics.Vector<int>;
+using Float = System.Numerics.Vector<float>;
+using Util = System.Numerics.Vector;
+#else
+using Int = int;
+using Float = float;
+using Util = CSharpNoise.ScalarUtil;
 #endif
 
+// using Vector = CSharpNoise.Scalar;
 namespace CSharpNoise
 {
-    public struct CoordinateGrid
+    public static class Noise
     {
-        public float xStart, yStart, zStart;
-        public float xStep, yStep, zStep;
-        public int width, height, depth;
-
-        public CoordinateGrid(int width, int height, float xStart, float yStart, float xStep, float yStep) 
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static unsafe void QuadraticNoise2D(Span<float> xCoords, Span<float> yCoords, float xFreq, float yFreq, float amplitude, int seed, Span<float> output)
         {
-            this.width = width;
-            this.height = height;
-            this.xStart = xStart;
-            this.yStart = yStart;
-            this.xStep = xStep;
-            this.yStep = yStep;
-            depth = 0;
-            zStart = 0;
-            zStep = 0;
+#if VECTOR
+            int length = xCoords.Length;
+            Int seedVec = Util.Create(seed);
+            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
+            for (int i = 0; i < length - Float.Count; i += Float.Count)
+            {
+                Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
+                Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
+                Float result = QuadraticNoise2DVector(xVec, yVec, seedVec);
+                result.StoreUnsafe(ref output[i]);
+            }
+            int endIndex = length - Float.Count;
+            Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
+            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * yfVec;
+            Float resultEnd = QuadraticNoise2DVector(xEnd, yEnd, seedVec);
+            resultEnd.StoreUnsafe(ref output[endIndex]);
+#else
+            for (int i = 0; i < xCoords.Length; ++i)
+            {
+                output[i] = QuadraticNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed) * amplitude;
+            }
+#endif
         }
 
-        public CoordinateGrid(int width, int height, int depth, float xStart, float yStart, float zStart, float xStep, float yStep, float zStep)
+        public static unsafe void QuadraticNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, float xFreq, float yFreq, float zFreq, float amplitude, int seed, Span<float> output)
         {
-            this.width = width;
-            this.height = height;
-            this.depth = depth;
-            this.xStart = xStart;
-            this.yStart = yStart;
-            this.zStart = zStart;
-            this.xStep = xStep;
-            this.yStep = yStep;
-            this.zStep = zStep;
+#if VECTOR
+            int length = xCoords.Length;
+            Int seedVec = Util.Create(seed);
+            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq);
+            for (int i = 0; i < length - Float.Count; i += Float.Count)
+            {
+                Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
+                Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
+                Float zVec = Util.LoadUnsafe(ref yCoords[i]) * zfVec;
+                Float result = QuadraticNoise3DVector(xVec, yVec, zVec, seedVec);
+                result.StoreUnsafe(ref output[i]);
+            }
+            int endIndex = length - Float.Count;
+            Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
+            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * xfVec;
+            Float zEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * zfVec;
+            Float resultEnd = QuadraticNoise3DVector(xEnd, yEnd, zEnd, seedVec);
+            resultEnd.StoreUnsafe(ref output[endIndex]);
+#else
+            for (int i = 0; i < xCoords.Length; ++i)
+            {
+                output[i] = QuadraticNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * zFreq, seed);
+            }
+#endif
+
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static Float QuadraticNoise2DVector(Float x, Float y, Int seed)
+        {
+            Float xFloor = Util.Floor(x);
+            Float yFloor = Util.Floor(y);
+            Int ix = Util.ConvertToInt32Native(xFloor);
+            Int iy = Util.ConvertToInt32Native(yFloor);
+            Float fx = x - xFloor;
+            Float fy = y - yFloor;
+
+            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstXOR = Util.Create(203663684);
+
+            Int llHash = ix * ConstX + iy * ConstY + seed;
+            Int lrHash = llHash + ConstX;
+            Int ulHash = llHash + ConstY;
+            Int urHash = llHash + ConstX + ConstY;
+
+            llHash *= llHash ^ ConstXOR;
+            lrHash *= lrHash ^ ConstXOR;
+            ulHash *= ulHash ^ ConstXOR;
+            urHash *= urHash ^ ConstXOR;
+
+            Int GradAndMask = Util.Create(unchecked((int)0b11000000001100000000100000000111));
+            Int GradOrMask = Util.Create(unchecked((int)0b00011111100001111111001111101000));
+
+            llHash = (llHash & GradAndMask) | GradOrMask;
+            lrHash = (lrHash & GradAndMask) | GradOrMask;
+            ulHash = (ulHash & GradAndMask) | GradOrMask;
+            urHash = (urHash & GradAndMask) | GradOrMask;
+
+            Float fxm1 = fx - Util.Create(1f);
+            Float fym1 = fy - Util.Create(1f);
+
+            const int GradShift1 = 1, GradShift2 = 20, GradShift3 = 11;
+            Float llGrad = Util.MultiplyAddEstimate(
+                BlendVPS(llHash, fx, fy), Util.AsVectorSingle(llHash << GradShift1),
+                BlendVPS(llHash, fy, fx) * Util.AsVectorSingle(llHash << GradShift2));
+            Float lrGrad = Util.MultiplyAddEstimate(
+                BlendVPS(lrHash, fxm1, fy), Util.AsVectorSingle(lrHash << GradShift1),
+                BlendVPS(lrHash, fy, fxm1) * Util.AsVectorSingle(lrHash << GradShift2));
+            Float ulGrad = Util.MultiplyAddEstimate(
+                BlendVPS(ulHash, fx, fym1), Util.AsVectorSingle(ulHash << GradShift1),
+                BlendVPS(ulHash, fym1, fx) * Util.AsVectorSingle(ulHash << GradShift2));
+            Float urGrad = Util.MultiplyAddEstimate(
+                BlendVPS(urHash, fxm1, fym1), Util.AsVectorSingle(urHash << GradShift1),
+                BlendVPS(urHash, fym1, fxm1) * Util.AsVectorSingle(urHash << GradShift2));
+
+
+            // this is the quadratic part. Removing this gives you pure Perlin Noise. 
+#if false
+            llGrad = VUtil.MultiplyAddEstimate(llGrad, llGrad * (llHash << GradShift3).As<int, float>(), llGrad);
+            lrGrad = VUtil.MultiplyAddEstimate(lrGrad, lrGrad * (lrHash << GradShift3).As<int, float>(), lrGrad);
+            ulGrad = VUtil.MultiplyAddEstimate(ulGrad, ulGrad * (ulHash << GradShift3).As<int, float>(), ulGrad);
+            urGrad = VUtil.MultiplyAddEstimate(urGrad, urGrad * (urHash << GradShift3).As<int, float>(), urGrad);
+#endif
+
+            Float sx = fx * fx * fx * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fx, Util.Create(6f), Util.Create(-15f)), fx, Util.Create(10f));
+            Float sy = fy * fy * fy * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fy, Util.Create(6f), Util.Create(-15f)), fy, Util.Create(10f));
+
+            Float lLerp = Util.MultiplyAddEstimate(lrGrad - llGrad, sx, llGrad);
+            Float uLerp = Util.MultiplyAddEstimate(urGrad - ulGrad, sx, ulGrad);
+            Float result = Util.MultiplyAddEstimate(uLerp - lLerp, sy, lLerp);
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static Float QuadraticNoise3DVector(Float x, Float y, Float z, Int seed)
+        {
+            Float xFloor = Util.Floor(x);
+            Float yFloor = Util.Floor(y);
+            Float zFloor = Util.Floor(z);
+            Int ix = Util.ConvertToInt32Native(xFloor);
+            Int iy = Util.ConvertToInt32Native(yFloor);
+            Int iz = Util.ConvertToInt32Native(zFloor);
+            Float fx = x - xFloor;
+            Float fy = y - yFloor;
+            Float fz = z - zFloor;
+
+            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstZ = Util.Create(435040429), ConstXOR = Util.Create(203663684);
+
+            // X: (lower/upper) Y: (left/right) Z: (back/front). 
+            Int llbHash = ix * ConstX + iy * ConstY + iz * ConstZ + seed;
+            Int lrbHash = llbHash + ConstX;
+            Int ulbHash = llbHash + ConstY;
+            Int urbHash = llbHash + ConstX + ConstY;
+            Int llfHash = llbHash + ConstZ;
+            Int lrfHash = llbHash + ConstZ + ConstX;
+            Int ulfHash = llbHash + ConstZ + ConstY;
+            Int urfHash = llbHash + ConstZ + ConstX + ConstY;
+
+            llbHash *= llbHash ^ ConstXOR;
+            lrbHash *= lrbHash ^ ConstXOR;
+            ulbHash *= ulbHash ^ ConstXOR;
+            urbHash *= urbHash ^ ConstXOR;
+            llfHash *= llfHash ^ ConstXOR;
+            lrfHash *= lrfHash ^ ConstXOR;
+            ulfHash *= ulfHash ^ ConstXOR;
+            urfHash *= urfHash ^ ConstXOR;
+
+            Int GradAndMask = Util.Create(unchecked((int)0b11000000001100000000100000000111));
+            Int GradOrMask = Util.Create(unchecked((int)0b00011111100001111110001111110000));
+
+            llbHash = (llbHash & GradAndMask) | GradOrMask;
+            lrbHash = (lrbHash & GradAndMask) | GradOrMask;
+            ulbHash = (ulbHash & GradAndMask) | GradOrMask;
+            urbHash = (urbHash & GradAndMask) | GradOrMask;
+            llfHash = (llfHash & GradAndMask) | GradOrMask;
+            lrfHash = (lrfHash & GradAndMask) | GradOrMask;
+            ulfHash = (ulfHash & GradAndMask) | GradOrMask;
+            urfHash = (urfHash & GradAndMask) | GradOrMask;
+
+            const int GradShift1 = 1, GradShift2 = 20, GradShift3 = 11;
+            Float negOne = Util.Create(-1f);
+
+            Float sx = fx * fx * fx * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fx, Util.Create(6f), Util.Create(-15f)), fx, Util.Create(10f));
+            Float sz = fz * fz * fz * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fz, Util.Create(6f), Util.Create(-15f)), fz, Util.Create(10f));
+            Float sy = fy * fy * fy * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fy, Util.Create(6f), Util.Create(-15f)), fy, Util.Create(10f));
+
+            Float llbGrad = Util.MultiplyAddEstimate(
+                fx,          Util.AsVectorSingle(llbHash << GradShift1), Util.MultiplyAddEstimate(
+                fy,          Util.AsVectorSingle(llbHash << GradShift2),
+                fz *         Util.AsVectorSingle(llbHash << GradShift3)));
+            Float lrbGrad = Util.MultiplyAddEstimate(
+                fx + negOne, Util.AsVectorSingle(lrbHash << GradShift1), Util.MultiplyAddEstimate(
+                fy,          Util.AsVectorSingle(lrbHash << GradShift2),
+                fz *         Util.AsVectorSingle(lrbHash << GradShift3)));
+            Float lbLerp = Util.MultiplyAddEstimate(lrbGrad - llbGrad, sx, llbGrad);
+
+            Float ulbGrad = Util.MultiplyAddEstimate(
+                fx,          Util.AsVectorSingle(ulbHash << GradShift1), Util.MultiplyAddEstimate(
+                fy + negOne, Util.AsVectorSingle(ulbHash << GradShift2),
+                fz *         Util.AsVectorSingle(ulbHash << GradShift3)));
+            Float urbGrad = Util.MultiplyAddEstimate(
+                fx + negOne, Util.AsVectorSingle(urbHash << GradShift1), Util.MultiplyAddEstimate(
+                fy + negOne, Util.AsVectorSingle(urbHash << GradShift2),
+                fz *         Util.AsVectorSingle(urbHash << GradShift3)));
+            Float ubLerp = Util.MultiplyAddEstimate(urbGrad - ulbGrad, sx, ulbGrad);
+
+            fz += negOne;
+
+            Float llfGrad = Util.MultiplyAddEstimate(
+                fx,          Util.AsVectorSingle(llfHash << GradShift1), Util.MultiplyAddEstimate(
+                fy,          Util.AsVectorSingle(llfHash << GradShift2),
+                fz *         Util.AsVectorSingle(llfHash << GradShift3)));
+            Float lrfGrad = Util.MultiplyAddEstimate(
+                fx + negOne, Util.AsVectorSingle(lrfHash << GradShift1), Util.MultiplyAddEstimate(
+                fy,          Util.AsVectorSingle(lrfHash << GradShift2),
+                fz *         Util.AsVectorSingle(lrfHash << GradShift3)));
+            Float lfLerp = Util.MultiplyAddEstimate(lrfGrad - llfGrad, sx, llfGrad);
+
+            Float ulfGrad = Util.MultiplyAddEstimate(
+                fx,          Util.AsVectorSingle(ulfHash << GradShift1), Util.MultiplyAddEstimate(
+                fy + negOne, Util.AsVectorSingle(ulfHash << GradShift2),
+                fz *         Util.AsVectorSingle(ulfHash << GradShift3)));
+            Float urfGrad =  Util.MultiplyAddEstimate(
+                fx + negOne, Util.AsVectorSingle(urfHash << GradShift1), Util.MultiplyAddEstimate(
+                fy + negOne, Util.AsVectorSingle(urfHash << GradShift2),
+                fz *         Util.AsVectorSingle(urfHash << GradShift3)));
+            Float ufLerp = Util.MultiplyAddEstimate(urfGrad - ulfGrad, sx, ulfGrad);
+
+            // this is the quadratic part. Removing this gives you pure Perlin Noise. 
+            //llGrad = VUtil.MultiplyAddEstimate(llGrad, llGrad * (llHash << GradShift3).AsFloat(), llGrad);
+            //lrGrad = VUtil.MultiplyAddEstimate(lrGrad, lrGrad * (lrHash << GradShift3).AsFloat(), lrGrad);
+            //ulGrad = VUtil.MultiplyAddEstimate(ulGrad, ulGrad * (ulHash << GradShift3).AsFloat(), ulGrad);
+            //urGrad = VUtil.MultiplyAddEstimate(urGrad, urGrad * (urHash << GradShift3).AsFloat(), urGrad);
+
+           
+            Float bLerp = Util.MultiplyAddEstimate(ubLerp - lbLerp, sy, lbLerp);
+            Float fLerp = Util.MultiplyAddEstimate(ufLerp - lfLerp, sy, lfLerp);
+
+            Float result = Util.MultiplyAddEstimate(fLerp - bLerp, sz, bLerp);
+            return result;
+        }
+
+#if VECTOR
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static Float AsFloat(this Int vint)
+        {
+            return vint.As<int, float>();
+        }
+#endif
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static Float BlendVPS(Int selector, Float a, Float b)
+        {
+#if VECTOR
+            if (Avx.IsSupported)
+            {
+                return Avx.BlendVariable(a.AsVector256(), b.AsVector256(), selector.AsVector256().AsSingle()).AsVector();
+            }
+            else if (Sse41.IsSupported)
+            {
+                return Sse41.BlendVariable(a.AsVector128(), b.AsVector128(), selector.AsVector128().AsSingle()).AsVector();
+            }
+            else return Util.ConditionalSelect(Util.LessThan(selector, Util.Create(0)), a, b); 
+#else
+            return selector < 0 ? a : b;
+#endif
         }
     }
 
+    static class ScalarUtil
+    {
 
-    public static class Noise
-	{
-		static Noise()
-		{
-		}
-	}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float MultiplyAddEstimate(float a, float b, float c) => a * b + c;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Create(float f) => f;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Create(int i) => i;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe float AsVectorSingle(int i) => *(float*)&i;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int ConvertToInt32Native(float f) => (int)f;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Floor(float f) => MathF.Floor(f);
+    }
 }
