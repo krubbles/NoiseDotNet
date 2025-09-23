@@ -4,7 +4,9 @@ using BenchmarkDotNet.Attributes;
 
 int width = 120, height = 100;
 float[] result = new float[width * height];
-if (true) ;
+float[] result2 = new float[width * height];
+
+if (true) 
 {
     float[] xArray = new float[width * height];
     float[] yArray = new float[width * height];
@@ -18,8 +20,11 @@ if (true) ;
             yArray[arrayIndex] = y * 1f;
             zArray[arrayIndex++] = x * 1f;
         }
-
+#if false
     Noise.QuadraticNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1, result);
+#else
+    Noise.CellularNoise2D(xArray, yArray, 0.05f, 0.1f, 1f, 1f, 1, result2, result);
+#endif
 }
 BenchmarkRunner.Run<Benchmark>();
 
@@ -40,6 +45,16 @@ for (int y = 0; y < 100; ++y)
     for (int x = 0; x < 120; ++x)
     {
         float n = result[index++];
+#if true
+        char c = n switch
+        {
+            < 0.15f => '.',
+            < 0.3f => ':',
+            < 0.45f => '+',
+            < 0.6f => 'O',
+            _ => '#'
+        };
+#else
         char c = n switch
         {
             < -0.4f => '.',
@@ -48,6 +63,7 @@ for (int y = 0; y < 100; ++y)
             < 0.4f => 'O',
             _ => '#'
         };
+#endif
         b.Append(c);
 
     }
@@ -59,7 +75,7 @@ Console.ReadLine();
 public class Benchmark
 {
     float[] xArray, yArray, zArray;
-    float[] result;
+    float[] result, result2;
 
     [GlobalSetup]
     public void Setup()
@@ -67,6 +83,7 @@ public class Benchmark
 
         int width = 600, height = 1200;
         result  = new float[width * height];
+        result2 = new float[width * height];
         xArray = new float[width * height];
         yArray = new float[xArray.Length];
         zArray = new float[xArray.Length];
@@ -93,4 +110,9 @@ public class Benchmark
         Noise.QuadraticNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1, result);
     }
 
+    [Benchmark(OperationsPerInvoke = 600 * 1200)]
+    public void CellularNoise2D()
+    {
+        Noise.CellularNoise2D(xArray, yArray, 0.1f, 0.1f, 1f, 1f, 1, result, result2);
+    }
 }

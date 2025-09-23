@@ -71,7 +71,37 @@ namespace CSharpNoise
                 output[i] = QuadraticNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * zFreq, seed);
             }
 #endif
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed, Span<float> centerDistOut, Span<float> edgeDistOut)
+        {
+#if VECTOR
+            int length = xCoords.Length;
+            Int seedVec = Util.Create(seed);
+            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
+            for (int i = 0; i < length - Float.Count; i += Float.Count)
+            {
+                Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
+                Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
+                (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec, yVec, seedVec);
+                centerDist.StoreUnsafe(ref centerDistOut[i]);
+                edgeDist.StoreUnsafe(ref edgeDistOut[i]);
+            }
+            int endIndex = length - Float.Count;
+            Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
+            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * yfVec;
+            (Float centerDistEnd, Float edgeDistEnd) = CellularNoise2DVector(xEnd, yEnd, seedVec);
+            centerDistEnd *= centerDistAmplitude;
+            edgeDistEnd *= edgeDistAmplitude;
+            centerDistEnd.StoreUnsafe(ref centerDistOut[endIndex]);
+            edgeDistEnd.StoreUnsafe(ref edgeDistOut[endIndex]);
+#else
+            for (int i = 0; i < xCoords.Length; ++i)
+            {
+                output[i] = QuadraticNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed) * amplitude;
+            }
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -253,7 +283,7 @@ namespace CSharpNoise
             return result;
         }
 
-        static (Float centerDist, Float edgeDist, Float random) CellularNoise2D(Float x, Float y, Int seed)
+        static (Float centerDist, Float edgeDist) CellularNoise2DVector(Float x, Float y, Int seed)
         {
             Float xFloor = Util.Floor(x);
             Float yFloor = Util.Floor(y);
@@ -266,23 +296,25 @@ namespace CSharpNoise
 
             Int centerHash = ix * ConstX + iy * ConstY + seed;
 
-            Float d1 = Util.Create(2f), d2 = Util.Create(2f), r = default;
+            Float d1 = Util.Create(2f), d2 = Util.Create(2f);
             Float one = Util.Create(1f), two = Util.Create(2f);
             SingleCell(centerHash + ConstY, fx + one, fy, ref d1, ref d2);
-            SingleCell(centerHash + ConstY + ConstX, fx + two, fy, ref d1, ref d2);
-            SingleCell(centerHash + ConstY - ConstX, fx, fy, ref d1, ref d2);
+            SingleCell(centerHash + ConstY - ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell(centerHash + ConstY + ConstX, fx, fy, ref d1, ref d2);
             fy += one;
             SingleCell(centerHash, fx + one, fy, ref d1, ref d2);
-            SingleCell(centerHash + ConstX, fx + two, fy, ref d1, ref d2);
-            SingleCell(centerHash - ConstX, fx, fy, ref d1, ref d2);
+            SingleCell(centerHash - ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell(centerHash + ConstX, fx, fy, ref d1, ref d2);
             fy += one;
             SingleCell(centerHash - ConstY, fx + one, fy, ref d1, ref d2);
-            SingleCell(centerHash - ConstY + ConstX, fx + two, fy, ref d1, ref d2);
-            SingleCell(centerHash - ConstY - ConstX, fx, fy, ref d1, ref d2);
+            SingleCell(centerHash - ConstY - ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell(centerHash - ConstY + ConstX, fx, fy, ref d1, ref d2);
 
             d1 = Util.SquareRoot(d1);
             d2 = Util.SquareRoot(d2);
-            return (d1, d2 - d1, r);
+
+            Float edgeDist = d2 - d1;
+            return (d1, edgeDist);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -298,8 +330,8 @@ namespace CSharpNoise
             Float d = Util.MultiplyAddEstimate(dx, dx, dy * dy);
             Int smallest = Util.LessThan(d, d1);
             Int secondSmallest = Util.AndNot(Util.LessThan(d, d2), smallest);
+            d2 = Util.ConditionalSelect(smallest, d1, Util.ConditionalSelect(secondSmallest, d, d2));
             d1 = Util.ConditionalSelect(smallest, d, d1);
-            d2 = Util.ConditionalSelect(secondSmallest, d, d2);
         }
 
 #if VECTOR
