@@ -26,7 +26,7 @@ if (true)
     Noise.CellularNoise3D(xArray, yArray, zArray, 0.04f, 0.04f, 0.04f, 1f, 1f, 1, result2, result);
 #endif
 }
-// BenchmarkRunner.Run<Benchmark>();
+BenchmarkRunner.Run<Benchmark>();
 
 
 /*
@@ -81,7 +81,7 @@ public class Benchmark
     public void Setup()
     {
 
-        int width = 600, height = 1200;
+        int width = 224, height = 224;
         result  = new float[width * height];
         result2 = new float[width * height];
         xArray = new float[width * height];
@@ -98,21 +98,28 @@ public class Benchmark
     }
 
 
-    [Benchmark(OperationsPerInvoke = 600 * 1200)]
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void QuadraticNoise2D()
     {
         Noise.QuadraticNoise2D(xArray, yArray, 0.1f, 1f, 1f, 1, result);
     }
 
-    [Benchmark(OperationsPerInvoke = 600 * 1200)]
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void QuadraticNoise3D()
     {
         Noise.QuadraticNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1, result);
     }
 
-    [Benchmark(OperationsPerInvoke = 600 * 1200)]
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void CellularNoise2D()
     {
         Noise.CellularNoise2D(xArray, yArray, 0.1f, 0.1f, 1f, 1f, 1, result, result2);
     }
+
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
+    public void CellularNoise3D()
+    {
+        Noise.CellularNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1f, 1, result, result2);
+    }
+
 }

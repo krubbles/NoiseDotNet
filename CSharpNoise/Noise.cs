@@ -45,6 +45,7 @@ namespace CSharpNoise
 #endif
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static unsafe void QuadraticNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, float xFreq, float yFreq, float zFreq, float amplitude, int seed, Span<float> output)
         {
 #if VECTOR
@@ -325,6 +326,7 @@ namespace CSharpNoise
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static (Float centerDist, Float edgeDist) CellularNoise2DVector(Float x, Float y, Int seed)
         {
             Float xFloor = Util.Floor(x);
@@ -382,6 +384,7 @@ namespace CSharpNoise
 #endif
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static (Float centerDist, Float edgeDist) CellularNoise3DVector(Float x, Float y, Float z, Int seed)
         {
             Float xFloor = Util.Floor(x);
@@ -450,7 +453,7 @@ namespace CSharpNoise
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static void SingleCell3D(Int hash, Float fx, Float fy,Float fz, ref Float d1, ref Float d2)
+        static void SingleCell3D(Int hash, Float fx, Float fy, Float fz, ref Float d1, ref Float d2)
         {
             Int ConstXOR = Util.Create(203663684);
             hash *= hash ^ ConstXOR;
@@ -459,7 +462,11 @@ namespace CSharpNoise
             hash = (hash & AndMask) | OrMask;
             Float dx = fx - Util.AsVectorSingle(hash << 3);
             Float dy = fy - Util.AsVectorSingle(hash << 15);
+#if VECTOR
             Float dz = fz - Util.Multiply(Util.ConvertToSingle(hash.As<int, uint>()), 1f / uint.MaxValue);
+#else
+            Float dz = fz - (uint)hash * 1f / uint.MaxValue;
+#endif
             Float d = Util.MultiplyAddEstimate(dx, dx, Util.MultiplyAddEstimate(dy, dy, dz * dz));
 #if VECTOR
             Int smallest = Util.LessThan(d, d1);
