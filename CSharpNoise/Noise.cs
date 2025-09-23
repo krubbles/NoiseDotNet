@@ -1,4 +1,4 @@
-﻿// #define VECTOR
+﻿#define VECTOR
 using System.Runtime.CompilerServices;
 using System.Numerics;
 using System.Runtime.Intrinsics.X86;
@@ -55,14 +55,14 @@ namespace CSharpNoise
             {
                 Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
                 Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
-                Float zVec = Util.LoadUnsafe(ref yCoords[i]) * zfVec;
+                Float zVec = Util.LoadUnsafe(ref zCoords[i]) * zfVec;
                 Float result = QuadraticNoise3DVector(xVec, yVec, zVec, seedVec);
                 result.StoreUnsafe(ref output[i]);
             }
             int endIndex = length - Float.Count;
             Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
             Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * xfVec;
-            Float zEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * zfVec;
+            Float zEnd = Util.LoadUnsafe(ref zCoords[endIndex]) * zfVec;
             Float resultEnd = QuadraticNoise3DVector(xEnd, yEnd, zEnd, seedVec);
             resultEnd.StoreUnsafe(ref output[endIndex]);
 #else
@@ -102,6 +102,44 @@ namespace CSharpNoise
             for (int i = 0; i < xCoords.Length; ++i)
             {
                 (float centerDist, float edgeDist) = CellularNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed);
+                centerDistOut[i] = centerDist * centerDistAmplitude;
+                edgeDistOut[i] = edgeDist * centerDistAmplitude;
+            }
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static unsafe void CellularNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed, Span<float> centerDistOut, Span<float> edgeDistOut)
+        {
+#if VECTOR
+            int length = xCoords.Length;
+            Int seedVec = Util.Create(seed);
+            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq);
+            for (int i = 0; i < length - Float.Count; i += Float.Count)
+            {
+                Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
+                Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
+                Float zVec = Util.LoadUnsafe(ref zCoords[i]) * zfVec;
+
+                (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec, yVec, zVec, seedVec);
+                centerDist *= centerDistAmplitude;
+                edgeDist *= edgeDistAmplitude;
+                centerDist.StoreUnsafe(ref centerDistOut[i]);
+                edgeDist.StoreUnsafe(ref edgeDistOut[i]);
+            }
+            int endIndex = length - Float.Count;
+            Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
+            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * yfVec;
+            Float zEnd = Util.LoadUnsafe(ref zCoords[endIndex]) * zfVec;
+            (Float centerDistEnd, Float edgeDistEnd) = CellularNoise3DVector(xEnd, yEnd, zEnd, seedVec);
+            centerDistEnd *= centerDistAmplitude;
+            edgeDistEnd *= edgeDistAmplitude;
+            centerDistEnd.StoreUnsafe(ref centerDistOut[endIndex]);
+            edgeDistEnd.StoreUnsafe(ref edgeDistOut[endIndex]);
+#else
+            for (int i = 0; i < xCoords.Length; ++i)
+            {
+                (float centerDist, float edgeDist) = CellularNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * yFreq, seed);
                 centerDistOut[i] = centerDist * centerDistAmplitude;
                 edgeDistOut[i] = edgeDist * centerDistAmplitude;
             }
@@ -332,6 +370,97 @@ namespace CSharpNoise
             Float dx = fx - Util.AsVectorSingle(hash);
             Float dy = fy - Util.AsVectorSingle(hash << 12);
             Float d = Util.MultiplyAddEstimate(dx, dx, dy * dy);
+#if VECTOR
+            Int smallest = Util.LessThan(d, d1);
+            Int secondSmallest = Util.LessThan(d, d2);
+            d2 = Util.ConditionalSelect(smallest, d1, Util.ConditionalSelect(secondSmallest, d, d2));
+            d1 = Util.ConditionalSelect(smallest, d, d1);
+#else
+            bool smallest = d < d1;
+            d2 = smallest ? d1 : d < d2 ? d : d2;
+            d1 = smallest ? d : d1;
+#endif
+        }
+
+        static (Float centerDist, Float edgeDist) CellularNoise3DVector(Float x, Float y, Float z, Int seed)
+        {
+            Float xFloor = Util.Floor(x);
+            Float yFloor = Util.Floor(y);
+            Float zFloor = Util.Floor(z);
+            Int ix = Util.ConvertToInt32Native(xFloor);
+            Int iy = Util.ConvertToInt32Native(yFloor);
+            Int iz = Util.ConvertToInt32Native(zFloor);
+            Float fx = x - xFloor;
+            Float fy = y - yFloor;
+            Float fz = z - zFloor;
+
+            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstZ = Util.Create(435040429);
+
+            Int centerHash = ix * ConstX + iy * ConstY + iz * ConstZ + seed;
+
+            Float d1 = Util.Create(2f), d2 = Util.Create(2f);
+            Float one = Util.Create(1f), two = Util.Create(2f);
+            SingleCell3D(centerHash + ConstY, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstY - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstY + ConstX, fx, fy, fz, ref d1, ref d2);
+            fy += one;
+            SingleCell3D(centerHash, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstX, fx, fy, fz, ref d1, ref d2);
+            fy += one;
+            SingleCell3D(centerHash - ConstY, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstY - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstY + ConstX, fx, fy, fz, ref d1, ref d2);
+
+            fz += one;
+            centerHash -= ConstZ;
+
+            SingleCell3D(centerHash - ConstY, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstY - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstY + ConstX, fx, fy, fz, ref d1, ref d2);
+            fy -= one;
+            SingleCell3D(centerHash, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstX, fx, fy, fz, ref d1, ref d2);
+            fy -= one;
+            SingleCell3D(centerHash + ConstY, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstY - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstY + ConstX, fx, fy, fz, ref d1, ref d2);
+
+            fz -= Util.Create(2f);
+            centerHash += ConstZ * 2;
+
+            SingleCell3D(centerHash + ConstY, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstY - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstY + ConstX, fx, fy, fz, ref d1, ref d2);
+            fy += one;
+            SingleCell3D(centerHash, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash + ConstX, fx, fy, fz, ref d1, ref d2);
+            fy += one;
+            SingleCell3D(centerHash - ConstY, fx + one, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstY - ConstX, fx + two, fy, fz, ref d1, ref d2);
+            SingleCell3D(centerHash - ConstY + ConstX, fx, fy, fz, ref d1, ref d2);
+
+            d1 = Util.SquareRoot(d1);
+            d2 = Util.SquareRoot(d2);
+
+            Float edgeDist = d2 - d1;
+            return (d1, edgeDist);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static void SingleCell3D(Int hash, Float fx, Float fy,Float fz, ref Float d1, ref Float d2)
+        {
+            Int ConstXOR = Util.Create(203663684);
+            hash *= hash ^ ConstXOR;
+            Int AndMask = Util.Create(unchecked((int)0b11100000000011100000000011111111));
+            Int OrMask =  Util.Create(unchecked((int)0b00000111111100000111111100000000));
+            hash = (hash & AndMask) | OrMask;
+            Float dx = fx - Util.AsVectorSingle(hash << 3);
+            Float dy = fy - Util.AsVectorSingle(hash << 15);
+            Float dz = fz - Util.Multiply(Util.ConvertToSingle(hash.As<int, uint>()), 1f / uint.MaxValue);
+            Float d = Util.MultiplyAddEstimate(dx, dx, Util.MultiplyAddEstimate(dy, dy, dz * dz));
 #if VECTOR
             Int smallest = Util.LessThan(d, d1);
             Int secondSmallest = Util.LessThan(d, d2);

@@ -16,14 +16,14 @@ if (true)
     for (int y = 0; y < height; ++y)
         for (int x = 0; x < width; ++x) 
         {
-            xArray[arrayIndex] = x * 1f;
-            yArray[arrayIndex] = y * 1f;
-            zArray[arrayIndex++] = x * 1f;
+            xArray[arrayIndex] = x * 0.707f;
+            yArray[arrayIndex] = y * 0.707f;
+            zArray[arrayIndex++] = x * 0.707f - y * 0.707f;
         }
 #if false
     Noise.QuadraticNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1, result);
 #else
-    Noise.CellularNoise2D(xArray, yArray, 0.05f, 0.1f, 1f, 1f, 1, result2, result);
+    Noise.CellularNoise3D(xArray, yArray, zArray, 0.04f, 0.04f, 0.04f, 1f, 1f, 1, result2, result);
 #endif
 }
 // BenchmarkRunner.Run<Benchmark>();
