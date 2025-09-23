@@ -26,7 +26,7 @@ if (true)
     Noise.CellularNoise2D(xArray, yArray, 0.05f, 0.1f, 1f, 1f, 1, result2, result);
 #endif
 }
-BenchmarkRunner.Run<Benchmark>();
+// BenchmarkRunner.Run<Benchmark>();
 
 
 /*

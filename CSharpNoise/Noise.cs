@@ -1,4 +1,4 @@
-﻿#define VECTOR
+﻿// #define VECTOR
 using System.Runtime.CompilerServices;
 using System.Numerics;
 using System.Runtime.Intrinsics.X86;
@@ -85,6 +85,8 @@ namespace CSharpNoise
                 Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
                 Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
                 (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec, yVec, seedVec);
+                centerDist *= centerDistAmplitude;
+                edgeDist *= edgeDistAmplitude;
                 centerDist.StoreUnsafe(ref centerDistOut[i]);
                 edgeDist.StoreUnsafe(ref edgeDistOut[i]);
             }
@@ -99,7 +101,9 @@ namespace CSharpNoise
 #else
             for (int i = 0; i < xCoords.Length; ++i)
             {
-                output[i] = QuadraticNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed) * amplitude;
+                (float centerDist, float edgeDist) = CellularNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed);
+                centerDistOut[i] = centerDist * centerDistAmplitude;
+                edgeDistOut[i] = edgeDist * centerDistAmplitude;
             }
 #endif
         }
@@ -154,10 +158,10 @@ namespace CSharpNoise
 
             // this is the quadratic part. Removing this gives you pure Perlin Noise. 
 #if true
-            llGrad = Util.MultiplyAddEstimate(llGrad, llGrad * (llHash << GradShift3).As<int, float>(), llGrad);
-            lrGrad = Util.MultiplyAddEstimate(lrGrad, lrGrad * (lrHash << GradShift3).As<int, float>(), lrGrad);
-            ulGrad = Util.MultiplyAddEstimate(ulGrad, ulGrad * (ulHash << GradShift3).As<int, float>(), ulGrad);
-            urGrad = Util.MultiplyAddEstimate(urGrad, urGrad * (urHash << GradShift3).As<int, float>(), urGrad);
+            llGrad = Util.MultiplyAddEstimate(llGrad, llGrad * Util.AsVectorSingle(llHash << GradShift3), llGrad);
+            lrGrad = Util.MultiplyAddEstimate(lrGrad, lrGrad * Util.AsVectorSingle(lrHash << GradShift3), lrGrad);
+            ulGrad = Util.MultiplyAddEstimate(ulGrad, ulGrad * Util.AsVectorSingle(ulHash << GradShift3), ulGrad);
+            urGrad = Util.MultiplyAddEstimate(urGrad, urGrad * Util.AsVectorSingle(urHash << GradShift3), urGrad);
 #endif
 
             Float sx = fx * fx * fx * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fx, Util.Create(6f), Util.Create(-15f)), fx, Util.Create(10f));
@@ -266,14 +270,14 @@ namespace CSharpNoise
 
             // this is the quadratic part. Removing this gives you pure Perlin Noise. 
 #if true
-            llfGrad = Util.MultiplyAddEstimate(llfGrad, llfGrad * (llfHash << GradShift3).AsFloat(), llfGrad);
-            lrfGrad = Util.MultiplyAddEstimate(lrfGrad, lrfGrad * (lrfHash << GradShift3).AsFloat(), lrfGrad);
-            ulfGrad = Util.MultiplyAddEstimate(ulfGrad, ulfGrad * (ulfHash << GradShift3).AsFloat(), ulfGrad);
-            urfGrad = Util.MultiplyAddEstimate(urfGrad, urfGrad * (urfHash << GradShift3).AsFloat(), urfGrad);
-            llbGrad = Util.MultiplyAddEstimate(llbGrad, llbGrad * (llbHash << GradShift3).AsFloat(), llbGrad);
-            lrbGrad = Util.MultiplyAddEstimate(lrbGrad, lrbGrad * (lrbHash << GradShift3).AsFloat(), lrbGrad);
-            ulbGrad = Util.MultiplyAddEstimate(ulbGrad, ulbGrad * (ulbHash << GradShift3).AsFloat(), ulbGrad);
-            urbGrad = Util.MultiplyAddEstimate(urbGrad, urbGrad * (urbHash << GradShift3).AsFloat(), urbGrad);
+            llfGrad = Util.MultiplyAddEstimate(llfGrad, llfGrad * Util.AsVectorSingle(llfHash << GradShift3), llfGrad);
+            lrfGrad = Util.MultiplyAddEstimate(lrfGrad, lrfGrad * Util.AsVectorSingle(lrfHash << GradShift3), lrfGrad);
+            ulfGrad = Util.MultiplyAddEstimate(ulfGrad, ulfGrad * Util.AsVectorSingle(ulfHash << GradShift3), ulfGrad);
+            urfGrad = Util.MultiplyAddEstimate(urfGrad, urfGrad * Util.AsVectorSingle(urfHash << GradShift3), urfGrad);
+            llbGrad = Util.MultiplyAddEstimate(llbGrad, llbGrad * Util.AsVectorSingle(llbHash << GradShift3), llbGrad);
+            lrbGrad = Util.MultiplyAddEstimate(lrbGrad, lrbGrad * Util.AsVectorSingle(lrbHash << GradShift3), lrbGrad);
+            ulbGrad = Util.MultiplyAddEstimate(ulbGrad, ulbGrad * Util.AsVectorSingle(ulbHash << GradShift3), ulbGrad);
+            urbGrad = Util.MultiplyAddEstimate(urbGrad, urbGrad * Util.AsVectorSingle(urbHash << GradShift3), urbGrad);
 #endif
 
             Float bLerp = Util.MultiplyAddEstimate(ubLerp - lbLerp, sy, lbLerp);
@@ -328,10 +332,16 @@ namespace CSharpNoise
             Float dx = fx - Util.AsVectorSingle(hash);
             Float dy = fy - Util.AsVectorSingle(hash << 12);
             Float d = Util.MultiplyAddEstimate(dx, dx, dy * dy);
+#if VECTOR
             Int smallest = Util.LessThan(d, d1);
-            Int secondSmallest = Util.AndNot(Util.LessThan(d, d2), smallest);
+            Int secondSmallest = Util.LessThan(d, d2);
             d2 = Util.ConditionalSelect(smallest, d1, Util.ConditionalSelect(secondSmallest, d, d2));
             d1 = Util.ConditionalSelect(smallest, d, d1);
+#else
+            bool smallest = d < d1;
+            d2 = smallest ? d1 : d < d2 ? d : d2;
+            d1 = smallest ? d : d1;
+#endif
         }
 
 #if VECTOR
@@ -382,5 +392,10 @@ namespace CSharpNoise
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Floor(float f) => MathF.Floor(f);
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float SquareRoot(float f) => MathF.Sqrt(f);
+
     }
 }
