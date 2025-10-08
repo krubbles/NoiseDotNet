@@ -61,14 +61,14 @@ namespace CSharpNoise
             }
             int endIndex = length - Float.Count;
             Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
-            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * xfVec;
+            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * yfVec;
             Float zEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * zfVec;
             Float resultEnd = QuadraticNoise3DVector(xEnd, yEnd, zEnd, seedVec);
             resultEnd.StoreUnsafe(ref output[endIndex]);
 #else
             for (int i = 0; i < xCoords.Length; ++i)
             {
-                output[i] = QuadraticNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * zFreq, seed);
+                output[i] = QuadraticNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * zFreq, seed) * amplitude;
             }
 #endif
         }
