@@ -1,7 +1,7 @@
 # NoiseDotNet
-NoiseDotNet is a coherent noise library. It is 
+NoiseDotNet is a coherent noise library written in C#. It is 
 - Extremely optimized (w/ SIMD acceleration)
-- Lightweight (single-file code you can drop into your project)
+- Lightweight (single file you can drop into your project)
 - Compatible with both CoreCLR and Unity
 
 It supports 4 noise functions:
@@ -14,7 +14,7 @@ By default the Gradient noise calls use the Quadratic noise algorithm, which is 
 
 Performance data:
 
-| Noise Type x Impl.     | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
+|                        | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
 | :--------------------- | --------------------: | ------------------: | -----------------: |
 | Gradient2D (quadratic) | 1.35                  | 1.37                | N/A                |
 | Gradient2D (perlin)    | 1.14                  | 1.11                | 1.62               |
@@ -22,3 +22,41 @@ Performance data:
 | Gradient3D (perlin)    | 2.57                  | 1.94                | 3.93               |
 | Cellular2D             | 2.67                  | 2.13                | 7.29               |
 | Cellular3D             | 16.3                  | 9.32                | 22.7               |
+
+## How to add to your project
+Copy the file Noise.cs from the NoiseDotNet folder into your project. That's it!
+
+## How to use
+The noise functions are in the static Noise class in the NoiseDotNet namespace. Here is a short example of using one:
+
+```csharp
+int width = 16, height = 16;
+int sampleCount = width * height;
+
+// here we create a 2D grid of points to evaluate the noise function on
+float[] xCoords = new float[sampleCount];
+float[] yCoords = new float[sampleCount];
+int index = 0;
+for (int y = 0; y < height; ++y)
+    for (int x = 0; x < width; ++x)
+    {
+        xCoords[index] = x;
+        yCoords[index] = y;
+        index++;
+    }
+
+// allocating a buffer to use as the output
+float[] output = new float[sampleCount];
+
+NoiseDotNet.Noise.GradientNoise2D(
+    xCoords: xCoords,
+    yCoords: yCoords,
+    output: output,
+    xFreq: 0.1f, // x-coordinates are multiplied by this value before being used
+    yFreq: 0.1f, // y-coordinates are multiplied by this value before being used
+    amplitude: 1f, // the result of the noise function is multiplied by this value
+    seed: 100);
+
+// The result of the noise function calculations is now in the output buffer.
+// output[i] = GradientNoise(xCoords[i], yCoords[i])
+```
