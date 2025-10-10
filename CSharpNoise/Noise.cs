@@ -706,6 +706,9 @@ namespace NoiseDotNet
         }
     }
 
+    /// <summary>
+    /// Scalar versions of functions in the System.Numerics.Vector class.
+    /// </summary>
     static class ScalarUtil
     {
 
@@ -744,6 +747,11 @@ namespace NoiseDotNet
     }
 
 #if UNITY
+
+    /// <summary>
+    /// Burst Job for evaluating noise functions from the <see cref="Noise"/> class.
+    /// Used by the functions in the <see cref="Noise"/> class internally, however if you want to run the job asynchronously you can use this struct.
+    /// </summary>
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
     public unsafe struct BurstNoiseJob : IJob
     {
