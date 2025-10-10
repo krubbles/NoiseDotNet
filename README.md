@@ -60,6 +60,6 @@ NoiseDotNet.Noise.GradientNoise2D(
     amplitude: 1f, // the result of the noise function is multiplied by this value
     seed: 100);
 
-// The result of the noise function calculations is now in the output buffer.
+// The result of the noise function calculation is now in the output buffer.
 // output[i] = GradientNoise(xCoords[i], yCoords[i])
 ```
