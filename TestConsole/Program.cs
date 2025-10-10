@@ -1,4 +1,4 @@
-﻿using CSharpNoise;
+﻿using NoiseDotNet;
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Attributes;
 
@@ -23,7 +23,7 @@ if (true)
 #if false
     Noise.QuadraticNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1, result);
 #else
-    Noise.CellularNoise3D(xArray, yArray, zArray, 0.04f, 0.04f, 0.04f, 1f, 1f, 1, result2, result);
+    Noise.CellularNoise3D(xArray, yArray, zArray, result, result2, 0.1f, 0.1f, 0.1f, 1f, 1f, 1);
 #endif
 }
 BenchmarkRunner.Run<Benchmark>();
@@ -99,27 +99,27 @@ public class Benchmark
 
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
-    public void QuadraticNoise2D()
+    public void GradientNoise2D()
     {
-        Noise.QuadraticNoise2D(xArray, yArray, 0.1f, 1f, 1f, 1, result);
+        Noise.GradientNoise2D(xArray, yArray, result, 0.1f, 0.1f, 1f, 1);
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
-    public void QuadraticNoise3D()
+    public void GradientNoise3D()
     {
-        Noise.QuadraticNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1, result);
+        Noise.GradientNoise3D(xArray, yArray, zArray, result, 0.1f, 0.1f, 0.1f, 1f, 1);
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void CellularNoise2D()
     {
-        Noise.CellularNoise2D(xArray, yArray, 0.1f, 0.1f, 1f, 1f, 1, result, result2);
+        Noise.CellularNoise2D(xArray, yArray, result, result2, 0.1f, 0.1f, 1f, 1f, 1);
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void CellularNoise3D()
     {
-        Noise.CellularNoise3D(xArray, yArray, zArray, 0.1f, 0.1f, 0.1f, 1f, 1f, 1, result, result2);
+        Noise.CellularNoise3D(xArray, yArray, zArray, result, result2, 0.1f, 0.1f, 0.1f, 1f, 1f, 1);
     }
 
 }
