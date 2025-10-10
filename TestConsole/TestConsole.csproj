@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CSharpNoise\CSharpNoise.csproj" />
+    <ProjectReference Include="..\NoiseDotNet\NoiseDotNet.csproj" />
   </ItemGroup>
 
 </Project>
