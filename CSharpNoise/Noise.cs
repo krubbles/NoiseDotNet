@@ -54,6 +54,17 @@ namespace NoiseDotNet
         // and a version that takes in Spans, which creates and runs the Burst job.
 
 #if CORECLR
+        /// <summary>
+        /// <para> Vectorized 2D gradient noise function. Underlying algorithm is Quadratic noise, a modified version of Perlin noise. </para>
+        /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="output">The output buffer evaluations are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
         public static unsafe void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
         {
             int length = xCoords.Length;
@@ -79,8 +90,8 @@ namespace NoiseDotNet
         /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
         /// <para> Runs a synchronous Burst job to accelerate evaluation. If calling from Burst compiled code, use Noise.GradientNoise2DBurst() instead.</para>
         /// </summary>
-        /// <param name="x">The x-coordinates of the sample points.</param>
-        /// <param name="y">The y-coordinates of the sample points.</param>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
         /// <param name="output">The output buffer evaluations are written into.</param>
         /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
         /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
@@ -115,7 +126,19 @@ namespace NoiseDotNet
 #endif
 
 #if CORECLR
-
+        /// <summary>
+        /// <para> Vectorized 3D gradient noise function. Underlying algorithm is Quadratic noise, a modified version of Perlin noise. </para>
+        /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="zCoords">The z-coordinates of the sample points.</param>
+        /// <param name="output">The output buffer evaluations are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
+        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static unsafe void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
         {
@@ -136,16 +159,16 @@ namespace NoiseDotNet
             Float zEnd = Util.LoadUnsafe(ref zCoords[endIndex]) * zfVec;
             Float resultEnd = GradientNoise3DVector(xEnd, yEnd, zEnd, seedVec) * amplitude;
             resultEnd.StoreUnsafe(ref output[endIndex]);
-            }
+        }
 #else
         /// <summary>
         /// <para> Vectorized 3D gradient noise function. Underlying algorithm is Quadratic noise, a modified version of Perlin noise. </para>
         /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
         /// <para> Runs a synchronous Burst job to accelerate evaluation. If calling from Burst compiled code, use Noise.GradientNoise3DBurst() instead.</para>
         /// </summary>
-        /// <param name="x">The x-coordinates of the sample points.</param>
-        /// <param name="y">The y-coordinates of the sample points.</param>
-        /// <param name="z">The z-coordinates of the sample points.</param>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="zCoords">The z-coordinates of the sample points.</param>
         /// <param name="output">The output buffer evaluations are written into.</param>
         /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
         /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
@@ -183,7 +206,20 @@ namespace NoiseDotNet
 #endif
 
 #if CORECLR
-        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOut, Span<float> edgeDistOut, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        /// <summary>
+        /// <para> Vectorized 2D cellular noise function.</para>
+        /// <para> Outputs the distance to the center of the Voronoi cell and the distance to the edge of the Voronoi cell in two separate buffers. </para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
+        /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
         {
             int length = xCoords.Length;
             Int seedVec = Util.Create(seed);
@@ -195,8 +231,8 @@ namespace NoiseDotNet
                 (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec, yVec, seedVec);
                 centerDist *= centerDistAmplitude;
                 edgeDist *= edgeDistAmplitude;
-                centerDist.StoreUnsafe(ref centerDistOut[i]);
-                edgeDist.StoreUnsafe(ref edgeDistOut[i]);
+                centerDist.StoreUnsafe(ref centerDistOutput[i]);
+                edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
             }
             int endIndex = length - Float.Count;
             Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
@@ -204,8 +240,8 @@ namespace NoiseDotNet
             (Float centerDistEnd, Float edgeDistEnd) = CellularNoise2DVector(xEnd, yEnd, seedVec);
             centerDistEnd *= centerDistAmplitude;
             edgeDistEnd *= edgeDistAmplitude;
-            centerDistEnd.StoreUnsafe(ref centerDistOut[endIndex]);
-            edgeDistEnd.StoreUnsafe(ref edgeDistOut[endIndex]);
+            centerDistEnd.StoreUnsafe(ref centerDistOutput[endIndex]);
+            edgeDistEnd.StoreUnsafe(ref edgeDistOutput[endIndex]);
         }
 #else
         /// <summary>
@@ -256,7 +292,22 @@ namespace NoiseDotNet
 #endif
 
 #if CORECLR
-        public static unsafe void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOut, Span<float> edgeDistOut, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        /// <summary>
+        /// <para> Vectorized 3D cellular noise function.</para>
+        /// <para> Outputs the distance to the center of the Voronoi cell and the distance to the edge of the Voronoi cell in two separate buffers. </para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="zCoords">The z-coordinates of the sample points.</param>
+        /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
+        /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
+        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
         {
             int length = xCoords.Length;
             Int seedVec = Util.Create(seed);
@@ -270,8 +321,8 @@ namespace NoiseDotNet
                 (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec, yVec, zVec, seedVec);
                 centerDist *= centerDistAmplitude;
                 edgeDist *= edgeDistAmplitude;
-                centerDist.StoreUnsafe(ref centerDistOut[i]);
-                edgeDist.StoreUnsafe(ref edgeDistOut[i]);
+                centerDist.StoreUnsafe(ref centerDistOutput[i]);
+                edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
             }
             int endIndex = length - Float.Count;
             Float xEnd = Util.LoadUnsafe(in xCoords[endIndex]) * xfVec;
@@ -280,8 +331,8 @@ namespace NoiseDotNet
             (Float centerDistEnd, Float edgeDistEnd) = CellularNoise3DVector(xEnd, yEnd, zEnd, seedVec);
             centerDistEnd *= centerDistAmplitude;
             edgeDistEnd *= edgeDistAmplitude;
-            centerDistEnd.StoreUnsafe(ref centerDistOut[endIndex]);
-            edgeDistEnd.StoreUnsafe(ref edgeDistOut[endIndex]);
+            centerDistEnd.StoreUnsafe(ref centerDistOutput[endIndex]);
+            edgeDistEnd.StoreUnsafe(ref edgeDistOutput[endIndex]);
         }
 #else
         /// <summary>
