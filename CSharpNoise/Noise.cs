@@ -1,27 +1,61 @@
-﻿#define VECTOR
-using System.Runtime.CompilerServices;
+// Created by Miles Oetzel
+// This code is licensed under the MIT License
+
+// GradientNoise2D() and GradientNoise3D() can either use Quadratic Noise or Perlin Noise as their underlying algorithm.
+// Quadratic noise is better quality, but Perlin Noise is around 20% faster. Quadratic noise is recommended.
+// If you would like to switch to Perlin noise, remove the #define QUADRATIC statement.
+#define QUADRATIC
+
+#if UNITY_2017_1_OR_NEWER
+#define UNITY
+#else
+#define CORECLR
+#endif
+
+// This library is written to be compatible with both Unity and CoreCLR.
+// In CoreCLR, vectorization is achieved using the System.Numerics.Vector<T> API.
+// In Unity, vectorization is achieved using Burst auto-vectorization.
+// So in CoreCLR, Int and Float represent Vector<int> and Vector<float>,
+// while in Unity Int and Float simply represent int and float, since Burst will automatically preform vectorization.
+// The benefit of this approach is it involves very little platform-specific vectorized code,
+// so there is no need for multiple versions based on Fma/Avx2 support or ARM.
+
+#if CORECLR
 using System.Numerics;
 using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-#if VECTOR
-using Int =  System.Numerics.Vector<int>;
+using Int = System.Numerics.Vector<int>;
 using Float = System.Numerics.Vector<float>;
 using Util = System.Numerics.Vector;
 #else
-using Int = int;
-using Float = float;
-using Util = CSharpNoise.ScalarUtil;
+using Int = System.Int32;
+using Float = System.Single;
+using Util = NoiseDotNet.ScalarUtil;
+using Unity.Burst;
+using Unity.Mathematics;
+using Unity.Jobs;
+using Unity.Collections.LowLevel.Unsafe;
 #endif
 
-// using Vector = CSharpNoise.Scalar;
-namespace CSharpNoise
+using System.Runtime.CompilerServices;
+using System;
+
+namespace NoiseDotNet
 {
+    /// <summary>
+    /// SIMD-accelerated implementations of coherent noise functions.
+    /// </summary>
     public static class Noise
     {
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static unsafe void QuadraticNoise2D(Span<float> xCoords, Span<float> yCoords, float xFreq, float yFreq, float amplitude, int seed, Span<float> output)
+        // In CoreCLR, we can simply call directly into the vectorized code,
+        // However in Unity, we need to run the vectorized code in a Burst compiled job.
+        // For this reason, there are two versions of each noise function in Unity:
+        // A version that takes in pointers  which is called by the Burst job (Spans have limited support in Burst),
+        // and a version that takes in Spans, which creates and runs the Burst job.
+
+#if CORECLR
+        public static unsafe void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
         {
-#if VECTOR
             int length = xCoords.Length;
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
@@ -29,26 +63,62 @@ namespace CSharpNoise
             {
                 Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
                 Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
-                Float result = QuadraticNoise2DVector(xVec, yVec, seedVec);
+                Float result = GradientNoise2DVector(xVec, yVec, seedVec) * amplitude;
                 result.StoreUnsafe(ref output[i]);
             }
             int endIndex = length - Float.Count;
             Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
             Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * yfVec;
-            Float resultEnd = QuadraticNoise2DVector(xEnd, yEnd, seedVec);
+            Float resultEnd = GradientNoise2DVector(xEnd, yEnd, seedVec) * amplitude;
             resultEnd.StoreUnsafe(ref output[endIndex]);
+        }
 #else
-            for (int i = 0; i < xCoords.Length; ++i)
-            {
-                output[i] = QuadraticNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed) * amplitude;
-            }
-#endif
+
+        /// <summary>
+        /// <para> Vectorized 2D gradient noise function. Underlying algorithm is Quadratic noise, a modified version of Perlin noise. </para>
+        /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
+        /// <para> Runs a synchronous Burst job to accelerate evaluation. If calling from Burst compiled code, use Noise.GradientNoise2DBurst() instead.</para>
+        /// </summary>
+        /// <param name="x">The x-coordinates of the sample points.</param>
+        /// <param name="y">The y-coordinates of the sample points.</param>
+        /// <param name="output">The output buffer evaluations are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void GradientNoise2D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
+        {
+            // RunJob handles input validation
+            BurstNoiseJob.RunGradientNoise2DJob(xCoords, yCoords, output, xFreq, yFreq, amplitude, seed);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static unsafe void QuadraticNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, float xFreq, float yFreq, float zFreq, float amplitude, int seed, Span<float> output)
+        /// <summary>
+        /// <para> Vectorized 2D gradient noise function. Underlying algorithm is Quadratic noise, a modified version of Perlin noise. </para>
+        /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
+        /// <para> This function is intended to be called in Burst compiled code. If not using Burst, use Noise.GradientNoise2D() instead. That function uses Burst internally to improve evaluation speed.</para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="output">The output buffer evaluations are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void GradientNoise2DBurst([NoAlias] float* xCoords, [NoAlias] float* yCoords, [NoAlias] float* output, int length, float xFreq, float yFreq, float amplitude, int seed)
         {
-#if VECTOR
+            // this will be auto-vectorized by Burst.
+            for (int i = 0; i < length; ++i)
+            {
+                output[i] = GradientNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed) * amplitude;
+            }
+        }
+#endif
+
+#if CORECLR
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static unsafe void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
+        {
             int length = xCoords.Length;
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq);
@@ -57,27 +127,64 @@ namespace CSharpNoise
                 Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
                 Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
                 Float zVec = Util.LoadUnsafe(ref zCoords[i]) * zfVec;
-                Float result = QuadraticNoise3DVector(xVec, yVec, zVec, seedVec);
+                Float result = GradientNoise3DVector(xVec, yVec, zVec, seedVec) * amplitude;
                 result.StoreUnsafe(ref output[i]);
             }
             int endIndex = length - Float.Count;
             Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
             Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * xfVec;
             Float zEnd = Util.LoadUnsafe(ref zCoords[endIndex]) * zfVec;
-            Float resultEnd = QuadraticNoise3DVector(xEnd, yEnd, zEnd, seedVec);
+            Float resultEnd = GradientNoise3DVector(xEnd, yEnd, zEnd, seedVec) * amplitude;
             resultEnd.StoreUnsafe(ref output[endIndex]);
-#else
-            for (int i = 0; i < xCoords.Length; ++i)
-            {
-                output[i] = QuadraticNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * zFreq, seed);
             }
-#endif
+#else
+        /// <summary>
+        /// <para> Vectorized 3D gradient noise function. Underlying algorithm is Quadratic noise, a modified version of Perlin noise. </para>
+        /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
+        /// <para> Runs a synchronous Burst job to accelerate evaluation. If calling from Burst compiled code, use Noise.GradientNoise3DBurst() instead.</para>
+        /// </summary>
+        /// <param name="x">The x-coordinates of the sample points.</param>
+        /// <param name="y">The y-coordinates of the sample points.</param>
+        /// <param name="z">The z-coordinates of the sample points.</param>
+        /// <param name="output">The output buffer evaluations are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
+        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void GradientNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> output, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
+        {
+            // RunJob handles input validation
+            BurstNoiseJob.RunGradientNoise3DJob(xCoords, yCoords, zCoords, output, xFreq, yFreq, zFreq, amplitude, seed);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed, Span<float> centerDistOut, Span<float> edgeDistOut)
+        /// <summary>
+        /// <para> Vectorized 3D gradient noise function. Underlying algorithm is Quadratic noise, a modified version of Perlin noise. </para>
+        /// <para> Output range is approximately -1.0 to 1.0, but in rare cases may exceed this range. </para>
+        /// <para> This function is intended to be called in Burst compiled code. If not using Burst, use Noise.GradientNoise3D() instead. That function uses Burst internally to improve evaluation speed.</para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="zCoords">The z-coordinates of the sample points.</param>
+        /// <param name="output">The output buffer evaluations are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
+        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void GradientNoise3DBurst([NoAlias] float* xCoords, [NoAlias] float* yCoords, [NoAlias] float* zCoords, [NoAlias] float* output, int length, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
         {
-#if VECTOR
+            // this will be auto-vectorized by Burst.
+            for (int i = 0; i < length; ++i)
+            {
+                output[i] = GradientNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * zFreq, seed) * amplitude;
+            }
+        }
+#endif
+
+#if CORECLR
+        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOut, Span<float> edgeDistOut, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
             int length = xCoords.Length;
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
@@ -99,28 +206,66 @@ namespace CSharpNoise
             edgeDistEnd *= edgeDistAmplitude;
             centerDistEnd.StoreUnsafe(ref centerDistOut[endIndex]);
             edgeDistEnd.StoreUnsafe(ref edgeDistOut[endIndex]);
+        }
 #else
-            for (int i = 0; i < xCoords.Length; ++i)
-            {
-                (float centerDist, float edgeDist) = CellularNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed);
-                centerDistOut[i] = centerDist * centerDistAmplitude;
-                edgeDistOut[i] = edgeDist * centerDistAmplitude;
-            }
-#endif
+        /// <summary>
+        /// <para> Vectorized 2D cellular noise function.</para>
+        /// <para> Outputs the distance to the center of the Voronoi cell and the distance to the edge of the Voronoi cell in two separate buffers. </para>
+        /// <para> Runs a synchronous Burst job to accelerate evaluation. If calling from Burst compiled code, use Noise.CellularNoise2DBurst() instead.</para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
+        /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void CellularNoise2D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
+            BurstNoiseJob.RunCellularNoise2DJob(xCoords, yCoords, centerDistOutput, edgeDistOutput, xFreq, yFreq, centerDistAmplitude, edgeDistAmplitude, seed);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static unsafe void CellularNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed, Span<float> centerDistOut, Span<float> edgeDistOut)
+        /// <summary>
+        /// <para> Vectorized 2D cellular noise function.</para>
+        /// <para> Outputs the distance to the center of the Voronoi cell and the distance to the edge of the Voronoi cell in two separate buffers. </para>
+        /// <para> This function is intended to be called in Burst compiled code. If not using Burst, use Noise.CellularNoise2D() instead. That function uses Burst internally to improve evaluation speed.</para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="zCoords">The z-coordinates of the sample points.</param>
+        /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
+        /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
+        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void CellularNoise2DBurst([NoAlias] float* xCoords, [NoAlias] float* yCoords, [NoAlias] float* centerDistOutput, [NoAlias] float* edgeDistOutput, int length, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
         {
-#if VECTOR
+            // this will be auto-vectorized by Burst.
+            for (int i = 0; i < length; ++i)
+            {
+                (float centerDist, float edgeDist) = CellularNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed);
+                centerDistOutput[i] = centerDist * centerDistAmplitude;
+                edgeDistOutput[i] = edgeDist * centerDistAmplitude;
+            }
+        }
+#endif
+
+#if CORECLR
+        public static unsafe void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOut, Span<float> edgeDistOut, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
             int length = xCoords.Length;
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq);
             for (int i = 0; i < length - Float.Count; i += Float.Count)
             {
-                Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
-                Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
-                Float zVec = Util.LoadUnsafe(ref zCoords[i]) * zfVec;
+                Float xVec = Util.LoadUnsafe(in xCoords[i]) * xfVec;
+                Float yVec = Util.LoadUnsafe(in yCoords[i]) * yfVec;
+                Float zVec = Util.LoadUnsafe(in zCoords[i]) * zfVec;
 
                 (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec, yVec, zVec, seedVec);
                 centerDist *= centerDistAmplitude;
@@ -129,34 +274,81 @@ namespace CSharpNoise
                 edgeDist.StoreUnsafe(ref edgeDistOut[i]);
             }
             int endIndex = length - Float.Count;
-            Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
-            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * yfVec;
-            Float zEnd = Util.LoadUnsafe(ref zCoords[endIndex]) * zfVec;
+            Float xEnd = Util.LoadUnsafe(in xCoords[endIndex]) * xfVec;
+            Float yEnd = Util.LoadUnsafe(in yCoords[endIndex]) * yfVec;
+            Float zEnd = Util.LoadUnsafe(in zCoords[endIndex]) * zfVec;
             (Float centerDistEnd, Float edgeDistEnd) = CellularNoise3DVector(xEnd, yEnd, zEnd, seedVec);
             centerDistEnd *= centerDistAmplitude;
             edgeDistEnd *= edgeDistAmplitude;
             centerDistEnd.StoreUnsafe(ref centerDistOut[endIndex]);
             edgeDistEnd.StoreUnsafe(ref edgeDistOut[endIndex]);
+        }
 #else
-            for (int i = 0; i < xCoords.Length; ++i)
-            {
-                (float centerDist, float edgeDist) = CellularNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * yFreq, seed);
-                centerDistOut[i] = centerDist * centerDistAmplitude;
-                edgeDistOut[i] = edgeDist * centerDistAmplitude;
-            }
-#endif
+        /// <summary>
+        /// <para> Vectorized 3D cellular noise function.</para>
+        /// <para> Outputs the distance to the center of the Voronoi cell and the distance to the edge of the Voronoi cell in two separate buffers. </para>
+        /// <para> Runs a synchronous Burst job to accelerate evaluation. If calling from Burst compiled code, use Noise.CellularNoise3DBurst() instead.</para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="zCoords">The z-coordinates of the sample points.</param>
+        /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
+        /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
+        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
+            // RunJob handles input validation
+            BurstNoiseJob.RunCellularNoise3DJob(xCoords, yCoords, zCoords, centerDistOutput, edgeDistOutput, xFreq, yFreq, zFreq, centerDistAmplitude, edgeDistAmplitude, seed);
         }
 
+        /// <summary>
+        /// <para> Vectorized 3D cellular noise function.</para>
+        /// <para> Outputs the distance to the center of the Voronoi cell and the distance to the edge of the Voronoi cell in two separate buffers. </para>
+        /// <para> This function is intended to be called in Burst compiled code. If not using Burst, use Noise.CellularNoise3D() instead. That function uses Burst internally to improve evaluation speed.</para>
+        /// </summary>
+        /// <param name="xCoords">The x-coordinates of the sample points.</param>
+        /// <param name="yCoords">The y-coordinates of the sample points.</param>
+        /// <param name="zCoords">The z-coordinates of the sample points.</param>
+        /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
+        /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
+        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
+        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
+        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
+        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
+        /// <param name="seed">The seed for the noise function.</param>
+        public static unsafe void CellularNoise3DBurst([NoAlias] float* xCoords, [NoAlias] float* yCoords, [NoAlias] float* zCoords, [NoAlias] float* centerDistOutput, [NoAlias] float* edgeDistOutput, int length, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
+            // this will be auto-vectorized by Burst.
+            for (int i = 0; i < length; ++i)
+            {
+                (float centerDist, float edgeDist) = CellularNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * yFreq, seed);
+                centerDistOutput[i] = centerDist * centerDistAmplitude;
+                edgeDistOutput[i] = edgeDist * centerDistAmplitude;
+            }
+        }
+#endif
+
+        // All noise function implementations must be inlined so they can be auto-vectorized by Burst. 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static Float QuadraticNoise2DVector(Float x, Float y, Int seed)
+        static Float GradientNoise2DVector(Float x, Float y, Int seed)
         {
             Float xFloor = Util.Floor(x);
             Float yFloor = Util.Floor(y);
+            // In CoreCLR, Vector.ConvertToInt32() adds additional instructions to make sure that 
+            // that the conversion behaves is consistent across platforms when the float is outside the range of an int.
+            // Since in practical use of this function it will never be out of bounds, we can use ConvertToInt32Native, which avoids this overhead.
             Int ix = Util.ConvertToInt32Native(xFloor);
             Int iy = Util.ConvertToInt32Native(yFloor);
             Float fx = x - xFloor;
             Float fy = y - yFloor;
 
+            // These constants were chosen using an optimizer to avoid visually obvious non-random effects in the hash result.
             Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstXOR = Util.Create(203663684);
 
             Int llHash = ix * ConstX + iy * ConstY + seed;
@@ -180,7 +372,12 @@ namespace CSharpNoise
             Float fxm1 = fx - Util.Create(1f);
             Float fym1 = fy - Util.Create(1f);
 
-            const int GradShift1 = 1, GradShift2 = 20, GradShift3 = 11;
+            const int GradShift1 = 1, GradShift2 = 20;
+#if QUADRATIC
+            const int GradShift3 = 11;
+#endif
+
+            /// CoreCLR won't generate the vblendvps instruction here without explicitly calling it using the System.Runtime.Intrinsics API
             Float llGrad = Util.MultiplyAddEstimate(
                 BlendVPS(llHash, fx, fy), Util.AsVectorSingle(llHash << GradShift1),
                 BlendVPS(llHash, fy, fx) * Util.AsVectorSingle(llHash << GradShift2));
@@ -194,15 +391,14 @@ namespace CSharpNoise
                 BlendVPS(urHash, fxm1, fym1), Util.AsVectorSingle(urHash << GradShift1),
                 BlendVPS(urHash, fym1, fxm1) * Util.AsVectorSingle(urHash << GradShift2));
 
-
-            // this is the quadratic part. Removing this gives you pure Perlin Noise. 
-#if true
+#if QUADRATIC
             llGrad = Util.MultiplyAddEstimate(llGrad, llGrad * Util.AsVectorSingle(llHash << GradShift3), llGrad);
             lrGrad = Util.MultiplyAddEstimate(lrGrad, lrGrad * Util.AsVectorSingle(lrHash << GradShift3), lrGrad);
             ulGrad = Util.MultiplyAddEstimate(ulGrad, ulGrad * Util.AsVectorSingle(ulHash << GradShift3), ulGrad);
             urGrad = Util.MultiplyAddEstimate(urGrad, urGrad * Util.AsVectorSingle(urHash << GradShift3), urGrad);
 #endif
 
+            // smootherstep interpolation
             Float sx = fx * fx * fx * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fx, Util.Create(6f), Util.Create(-15f)), fx, Util.Create(10f));
             Float sy = fy * fy * fy * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fy, Util.Create(6f), Util.Create(-15f)), fy, Util.Create(10f));
 
@@ -212,8 +408,30 @@ namespace CSharpNoise
             return result;
         }
 
+        /// <summary>
+        /// Implementation of the x86 vblendvps instruction with fallbacks for targets that don't support that instruction. 
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static Float QuadraticNoise3DVector(Float x, Float y, Float z, Int seed)
+        static Float BlendVPS(Int selector, Float a, Float b)
+        {
+#if CORECLR
+            if (Avx.IsSupported)
+            {
+                return Avx.BlendVariable(a.AsVector256(), b.AsVector256(), selector.AsVector256().AsSingle()).AsVector();
+            }
+            else if (Sse41.IsSupported)
+            {
+                return Sse41.BlendVariable(a.AsVector128(), b.AsVector128(), selector.AsVector128().AsSingle()).AsVector();
+            }
+            else return Util.ConditionalSelect(Util.LessThan(selector, Util.Create(0)), a, b);
+#else
+            // Burst does recognize that it can use vblendbps here.
+            return selector < 0 ? a : b;
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static Float GradientNoise3DVector(Float x, Float y, Float z, Int seed)
         {
             Float xFloor = Util.Floor(x);
             Float yFloor = Util.Floor(y);
@@ -225,7 +443,7 @@ namespace CSharpNoise
             Float fy = y - yFloor;
             Float fz = z - zFloor;
 
-            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstZ = Util.Create(435040429), ConstXOR = Util.Create(203663684);
+            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstZ = Util.Create(738599801), ConstXOR = Util.Create(203663684);
 
             // X: (lower/upper) Y: (left/right) Z: (back/front). 
             Int llbHash = ix * ConstX + iy * ConstY + iz * ConstZ + seed;
@@ -237,14 +455,18 @@ namespace CSharpNoise
             Int ulfHash = llbHash + ConstZ + ConstY;
             Int urfHash = llbHash + ConstZ + ConstX + ConstY;
 
-            llbHash *= llbHash ^ ConstXOR;
-            lrbHash *= lrbHash ^ ConstXOR;
-            ulbHash *= ulbHash ^ ConstXOR;
-            urbHash *= urbHash ^ ConstXOR;
-            llfHash *= llfHash ^ ConstXOR;
-            lrfHash *= lrfHash ^ ConstXOR;
-            ulfHash *= ulfHash ^ ConstXOR;
-            urfHash *= urfHash ^ ConstXOR;
+            // This extra bit shift compared to the 2D version is needed because without it,
+            // low-significance bits don't have high quality randomness.
+            // In 2D, it is possible to avoid using these bits when generating a gradient vector,
+            // but in 3D, it is more difficult to achieve. 
+            llbHash *= (llbHash ^ ConstXOR) >> 16;
+            lrbHash *= (lrbHash ^ ConstXOR) >> 16;
+            ulbHash *= (ulbHash ^ ConstXOR) >> 16;
+            urbHash *= (urbHash ^ ConstXOR) >> 16;
+            llfHash *= (llfHash ^ ConstXOR) >> 16;
+            lrfHash *= (lrfHash ^ ConstXOR) >> 16;
+            ulfHash *= (ulfHash ^ ConstXOR) >> 16;
+            urfHash *= (urfHash ^ ConstXOR) >> 16;
 
             Int GradAndMask = Util.Create(unchecked((int)0b11000000001100000000100000000111));
             Int GradOrMask = Util.Create(unchecked((int)0b00011111100001111110001111110000));
@@ -266,58 +488,62 @@ namespace CSharpNoise
             Float sy = fy * fy * fy * Util.MultiplyAddEstimate(Util.MultiplyAddEstimate(fy, Util.Create(6f), Util.Create(-15f)), fy, Util.Create(10f));
 
             Float llbGrad = Util.MultiplyAddEstimate(
-                fx,          Util.AsVectorSingle(llbHash << GradShift1), Util.MultiplyAddEstimate(
-                fy,          Util.AsVectorSingle(llbHash << GradShift2),
-                fz *         Util.AsVectorSingle(llbHash << GradShift3)));
+                fx, Util.AsVectorSingle(llbHash << GradShift1), Util.MultiplyAddEstimate(
+                fy, Util.AsVectorSingle(llbHash << GradShift2),
+                fz * Util.AsVectorSingle(llbHash << GradShift3)));
             Float lrbGrad = Util.MultiplyAddEstimate(
                 fx + negOne, Util.AsVectorSingle(lrbHash << GradShift1), Util.MultiplyAddEstimate(
-                fy,          Util.AsVectorSingle(lrbHash << GradShift2),
-                fz *         Util.AsVectorSingle(lrbHash << GradShift3)));
+                fy, Util.AsVectorSingle(lrbHash << GradShift2),
+                fz * Util.AsVectorSingle(lrbHash << GradShift3)));
+#if QUADRATIC
+            llbGrad = Util.MultiplyAddEstimate(llbGrad, llbGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (llbHash & Util.Create(1 << 31))), llbGrad);
+            lrbGrad = Util.MultiplyAddEstimate(lrbGrad, lrbGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (lrbHash & Util.Create(1 << 31))), lrbGrad);
+#endif
             Float lbLerp = Util.MultiplyAddEstimate(lrbGrad - llbGrad, sx, llbGrad);
 
             Float ulbGrad = Util.MultiplyAddEstimate(
-                fx,          Util.AsVectorSingle(ulbHash << GradShift1), Util.MultiplyAddEstimate(
+                fx, Util.AsVectorSingle(ulbHash << GradShift1), Util.MultiplyAddEstimate(
                 fy + negOne, Util.AsVectorSingle(ulbHash << GradShift2),
-                fz *         Util.AsVectorSingle(ulbHash << GradShift3)));
+                fz * Util.AsVectorSingle(ulbHash << GradShift3)));
             Float urbGrad = Util.MultiplyAddEstimate(
                 fx + negOne, Util.AsVectorSingle(urbHash << GradShift1), Util.MultiplyAddEstimate(
                 fy + negOne, Util.AsVectorSingle(urbHash << GradShift2),
-                fz *         Util.AsVectorSingle(urbHash << GradShift3)));
+                fz * Util.AsVectorSingle(urbHash << GradShift3)));
+#if QUADRATIC
+            ulbGrad = Util.MultiplyAddEstimate(ulbGrad, ulbGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (ulbHash & Util.Create(1 << 31))), ulbGrad);
+            urbGrad = Util.MultiplyAddEstimate(urbGrad, urbGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (urbHash & Util.Create(1 << 31))), urbGrad);
+#endif
             Float ubLerp = Util.MultiplyAddEstimate(urbGrad - ulbGrad, sx, ulbGrad);
 
             fz += negOne;
 
             Float llfGrad = Util.MultiplyAddEstimate(
-                fx,          Util.AsVectorSingle(llfHash << GradShift1), Util.MultiplyAddEstimate(
-                fy,          Util.AsVectorSingle(llfHash << GradShift2),
-                fz *         Util.AsVectorSingle(llfHash << GradShift3)));
+                fx, Util.AsVectorSingle(llfHash << GradShift1), Util.MultiplyAddEstimate(
+                fy, Util.AsVectorSingle(llfHash << GradShift2),
+                fz * Util.AsVectorSingle(llfHash << GradShift3)));
             Float lrfGrad = Util.MultiplyAddEstimate(
                 fx + negOne, Util.AsVectorSingle(lrfHash << GradShift1), Util.MultiplyAddEstimate(
-                fy,          Util.AsVectorSingle(lrfHash << GradShift2),
-                fz *         Util.AsVectorSingle(lrfHash << GradShift3)));
+                fy, Util.AsVectorSingle(lrfHash << GradShift2),
+                fz * Util.AsVectorSingle(lrfHash << GradShift3)));
+#if QUADRATIC
+            llfGrad = Util.MultiplyAddEstimate(llfGrad, llfGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (llfHash & Util.Create(1 << 31))), llfGrad);
+            lrfGrad = Util.MultiplyAddEstimate(lrfGrad, lrfGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (lrfHash & Util.Create(1 << 31))), lrfGrad);
+#endif
             Float lfLerp = Util.MultiplyAddEstimate(lrfGrad - llfGrad, sx, llfGrad);
 
             Float ulfGrad = Util.MultiplyAddEstimate(
-                fx,          Util.AsVectorSingle(ulfHash << GradShift1), Util.MultiplyAddEstimate(
+                fx, Util.AsVectorSingle(ulfHash << GradShift1), Util.MultiplyAddEstimate(
                 fy + negOne, Util.AsVectorSingle(ulfHash << GradShift2),
-                fz *         Util.AsVectorSingle(ulfHash << GradShift3)));
-            Float urfGrad =  Util.MultiplyAddEstimate(
+                fz * Util.AsVectorSingle(ulfHash << GradShift3)));
+            Float urfGrad = Util.MultiplyAddEstimate(
                 fx + negOne, Util.AsVectorSingle(urfHash << GradShift1), Util.MultiplyAddEstimate(
                 fy + negOne, Util.AsVectorSingle(urfHash << GradShift2),
-                fz *         Util.AsVectorSingle(urfHash << GradShift3)));
-            Float ufLerp = Util.MultiplyAddEstimate(urfGrad - ulfGrad, sx, ulfGrad);
-
-            // this is the quadratic part. Removing this gives you pure Perlin Noise. 
-#if true
-            llfGrad = Util.MultiplyAddEstimate(llfGrad, llfGrad * Util.AsVectorSingle(llfHash << GradShift3), llfGrad);
-            lrfGrad = Util.MultiplyAddEstimate(lrfGrad, lrfGrad * Util.AsVectorSingle(lrfHash << GradShift3), lrfGrad);
-            ulfGrad = Util.MultiplyAddEstimate(ulfGrad, ulfGrad * Util.AsVectorSingle(ulfHash << GradShift3), ulfGrad);
-            urfGrad = Util.MultiplyAddEstimate(urfGrad, urfGrad * Util.AsVectorSingle(urfHash << GradShift3), urfGrad);
-            llbGrad = Util.MultiplyAddEstimate(llbGrad, llbGrad * Util.AsVectorSingle(llbHash << GradShift3), llbGrad);
-            lrbGrad = Util.MultiplyAddEstimate(lrbGrad, lrbGrad * Util.AsVectorSingle(lrbHash << GradShift3), lrbGrad);
-            ulbGrad = Util.MultiplyAddEstimate(ulbGrad, ulbGrad * Util.AsVectorSingle(ulbHash << GradShift3), ulbGrad);
-            urbGrad = Util.MultiplyAddEstimate(urbGrad, urbGrad * Util.AsVectorSingle(urbHash << GradShift3), urbGrad);
+                fz * Util.AsVectorSingle(urfHash << GradShift3)));
+#if QUADRATIC
+            ulfGrad = Util.MultiplyAddEstimate(ulfGrad, ulfGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (ulfHash & Util.Create(1 << 31))), ulfGrad);
+            urfGrad = Util.MultiplyAddEstimate(urfGrad, urfGrad * Util.AsVectorSingle(Util.AsVectorInt32(negOne) ^ (urfHash & Util.Create(1 << 31))), urfGrad);
 #endif
+            Float ufLerp = Util.MultiplyAddEstimate(urfGrad - ulfGrad, sx, ulfGrad);
 
             Float bLerp = Util.MultiplyAddEstimate(ubLerp - lbLerp, sy, lbLerp);
             Float fLerp = Util.MultiplyAddEstimate(ufLerp - lfLerp, sy, lfLerp);
@@ -342,17 +568,17 @@ namespace CSharpNoise
 
             Float d1 = Util.Create(2f), d2 = Util.Create(2f);
             Float one = Util.Create(1f), two = Util.Create(2f);
-            SingleCell(centerHash + ConstY, fx + one, fy, ref d1, ref d2);
-            SingleCell(centerHash + ConstY - ConstX, fx + two, fy, ref d1, ref d2);
-            SingleCell(centerHash + ConstY + ConstX, fx, fy, ref d1, ref d2);
+            SingleCell2D(centerHash + ConstY, fx + one, fy, ref d1, ref d2);
+            SingleCell2D(centerHash + ConstY - ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell2D(centerHash + ConstY + ConstX, fx, fy, ref d1, ref d2);
             fy += one;
-            SingleCell(centerHash, fx + one, fy, ref d1, ref d2);
-            SingleCell(centerHash - ConstX, fx + two, fy, ref d1, ref d2);
-            SingleCell(centerHash + ConstX, fx, fy, ref d1, ref d2);
+            SingleCell2D(centerHash, fx + one, fy, ref d1, ref d2);
+            SingleCell2D(centerHash - ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell2D(centerHash + ConstX, fx, fy, ref d1, ref d2);
             fy += one;
-            SingleCell(centerHash - ConstY, fx + one, fy, ref d1, ref d2);
-            SingleCell(centerHash - ConstY - ConstX, fx + two, fy, ref d1, ref d2);
-            SingleCell(centerHash - ConstY + ConstX, fx, fy, ref d1, ref d2);
+            SingleCell2D(centerHash - ConstY, fx + one, fy, ref d1, ref d2);
+            SingleCell2D(centerHash - ConstY - ConstX, fx + two, fy, ref d1, ref d2);
+            SingleCell2D(centerHash - ConstY + ConstX, fx, fy, ref d1, ref d2);
 
             d1 = Util.SquareRoot(d1);
             d2 = Util.SquareRoot(d2);
@@ -362,17 +588,17 @@ namespace CSharpNoise
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static void SingleCell(Int hash, Float fx, Float fy, ref Float d1, ref Float d2)
+        static void SingleCell2D(Int hash, Float fx, Float fy, ref Float d1, ref Float d2)
         {
             Int ConstXOR = Util.Create(203663684);
             hash *= hash ^ ConstXOR;
             Int AndMask = Util.Create(unchecked((int)0b00000000011100000000011111111111));
-            Int OrMask  = Util.Create(unchecked((int)0b00111111100000111111100000000000));
+            Int OrMask = Util.Create(unchecked((int)0b00111111100000111111100000000000));
             hash = (hash & AndMask) | OrMask;
             Float dx = fx - Util.AsVectorSingle(hash);
             Float dy = fy - Util.AsVectorSingle(hash << 12);
             Float d = Util.MultiplyAddEstimate(dx, dx, dy * dy);
-#if VECTOR
+#if CORECLR
             Int smallest = Util.LessThan(d, d1);
             Int secondSmallest = Util.LessThan(d, d2);
             d2 = Util.ConditionalSelect(smallest, d1, Util.ConditionalSelect(secondSmallest, d, d2));
@@ -397,7 +623,7 @@ namespace CSharpNoise
             Float fy = y - yFloor;
             Float fz = z - zFloor;
 
-            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstZ = Util.Create(435040429);
+            Int ConstX = Util.Create(180601904), ConstY = Util.Create(174181987), ConstZ = Util.Create(598742741);
 
             Int centerHash = ix * ConstX + iy * ConstY + iz * ConstZ + seed;
 
@@ -456,19 +682,19 @@ namespace CSharpNoise
         static void SingleCell3D(Int hash, Float fx, Float fy, Float fz, ref Float d1, ref Float d2)
         {
             Int ConstXOR = Util.Create(203663684);
-            hash *= hash ^ ConstXOR;
-            Int AndMask = Util.Create(unchecked((int)0b11100000000011100000000011111111));
-            Int OrMask =  Util.Create(unchecked((int)0b00000111111100000111111100000000));
+            hash *= (hash ^ ConstXOR) >> 16;
+            Int AndMask = Util.Create(unchecked((int)0b11000000000110000000001111111111));
+            Int OrMask =  Util.Create(unchecked((int)0b00001111111000011111110000000000));
             hash = (hash & AndMask) | OrMask;
-            Float dx = fx - Util.AsVectorSingle(hash << 3);
-            Float dy = fy - Util.AsVectorSingle(hash << 15);
-#if VECTOR
+            Float dx = fx - Util.AsVectorSingle(hash << 2);
+            Float dy = fy - Util.AsVectorSingle(hash << 13);
+#if CORECLR
             Float dz = fz - Util.Multiply(Util.ConvertToSingle(hash.As<int, uint>()), 1f / uint.MaxValue);
 #else
             Float dz = fz - (uint)hash * 1f / uint.MaxValue;
 #endif
             Float d = Util.MultiplyAddEstimate(dx, dx, Util.MultiplyAddEstimate(dy, dy, dz * dz));
-#if VECTOR
+#if CORECLR
             Int smallest = Util.LessThan(d, d1);
             Int secondSmallest = Util.LessThan(d, d2);
             d2 = Util.ConditionalSelect(smallest, d1, Util.ConditionalSelect(secondSmallest, d, d2));
@@ -479,35 +705,11 @@ namespace CSharpNoise
             d1 = smallest ? d : d1;
 #endif
         }
-
-#if VECTOR
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static Float AsFloat(this Int vint)
-        {
-            return vint.As<int, float>();
-        }
-#endif
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static Float BlendVPS(Int selector, Float a, Float b)
-        {
-#if VECTOR
-            if (Avx.IsSupported)
-            {
-                return Avx.BlendVariable(a.AsVector256(), b.AsVector256(), selector.AsVector256().AsSingle()).AsVector();
-            }
-            else if (Sse41.IsSupported)
-            {
-                return Sse41.BlendVariable(a.AsVector128(), b.AsVector128(), selector.AsVector128().AsSingle()).AsVector();
-            }
-            else return Util.ConditionalSelect(Util.LessThan(selector, Util.Create(0)), a, b); 
-#else
-            return selector < 0 ? a : b;
-#endif
-        }
     }
 
+    /// <summary>
+    /// Scalar versions of functions in the System.Numerics.Vector class.
+    /// </summary>
     static class ScalarUtil
     {
 
@@ -522,16 +724,221 @@ namespace CSharpNoise
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe float AsVectorSingle(int i) => *(float*)&i;
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe int AsVectorInt32(float f) => *(int*)&f;
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int ConvertToInt32Native(float f) => (int)f;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if UNITY
+        public static float Floor(float f) => math.floor(f);
+#else
         public static float Floor(float f) => MathF.Floor(f);
 
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if UNITY
+        public static float SquareRoot(float f) => math.sqrt(f);
+#else
         public static float SquareRoot(float f) => MathF.Sqrt(f);
-
+#endif
     }
+
+#if UNITY
+
+    /// <summary>
+    /// Burst Job for evaluating noise functions from the <see cref="Noise"/> class.
+    /// Used by the functions in the <see cref="Noise"/> class internally, however if you want to run the job asynchronously you can use this struct.
+    /// </summary>
+    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
+    public unsafe struct BurstNoiseJob : IJob
+    {
+        public NoiseType noiseType;
+        public int seed;
+        public float xFrequency, yFrequency, zFrequency;
+        public float amplitude1, amplitude2;
+
+        [NoAlias]
+        [NativeDisableUnsafePtrRestriction]
+        public float* xBuffer, yBuffer, zBuffer, output1Buffer, output2Buffer;
+        public int length;
+
+        public unsafe void Execute()
+        {
+            switch (noiseType)
+            {
+                case NoiseType.GradientNoise2D:
+                    Noise.GradientNoise2DBurst(xBuffer, yBuffer, output1Buffer, length, xFrequency, yFrequency, amplitude1, seed);
+                    break;
+                case NoiseType.GradientNoise3D:
+                    Noise.GradientNoise3DBurst(xBuffer, yBuffer, zBuffer, output1Buffer, length, xFrequency, yFrequency,zFrequency, amplitude1, seed);
+                    break;
+                case NoiseType.CellularNoise2D:
+                    Noise.CellularNoise2DBurst(xBuffer, yBuffer, output1Buffer, output2Buffer, length, xFrequency, yFrequency, amplitude1, amplitude2, seed);
+                    break;
+                case NoiseType.CellularNoise3D:
+                    Noise.CellularNoise3DBurst(xBuffer, yBuffer, zBuffer, output1Buffer, output2Buffer, length, xFrequency, yFrequency, zFrequency, amplitude1, amplitude2, seed);
+                    break;
+            }
+        }
+
+        public static void RunGradientNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
+        {
+            if (output.Length == 0)
+                throw new ArgumentException($"Output buffer length was 0. Expected > 0.");
+            if (output.Length != x.Length)
+                throw new ArgumentException($"Expected x buffer length {x.Length} to equal output buffer length {output.Length}");
+            if (output.Length != y.Length)
+                throw new ArgumentException($"Expected y buffer length {y.Length} to equal output buffer length {output.Length}");
+
+            fixed (float* xPtr = x)
+            {
+                fixed (float* yPtr = y)
+                {
+                    fixed (float* outPtr = output)
+                    {
+                        BurstNoiseJob job = new();
+                        job.noiseType = NoiseType.GradientNoise2D;
+                        job.xBuffer = xPtr;
+                        job.yBuffer = yPtr;
+                        job.output1Buffer = outPtr;
+                        job.length = x.Length;
+                        job.amplitude1 = amplitude;
+                        job.xFrequency = xFreq;
+                        job.yFrequency = yFreq;
+                        job.seed = seed;
+                        job.Run();
+                    }
+                }
+            }
+        }
+
+        public static void RunGradientNoise3DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, ReadOnlySpan<float> z, Span<float> output, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
+        {
+            if (output.Length == 0)
+                throw new ArgumentException($"Output buffer length was 0. Expected > 0.");
+            if (output.Length != x.Length)
+                throw new ArgumentException($"Expected x buffer length {x.Length} to equal output buffer length {output.Length}");
+            if (output.Length != y.Length)
+                throw new ArgumentException($"Expected y buffer length {y.Length} to equal output buffer length {output.Length}");
+            if (output.Length != z.Length)
+                throw new ArgumentException($"Expected z buffer length {z.Length} to equal output buffer length {output.Length}");
+
+            fixed (float* xPtr = x)
+            {
+                fixed (float* yPtr = y)
+                {
+                    fixed (float* zPtr = z)
+                    {
+                        fixed (float* outPtr = output)
+                        {
+                            BurstNoiseJob job = new();
+                            job.noiseType = NoiseType.GradientNoise3D;
+                            job.xBuffer = xPtr;
+                            job.yBuffer = yPtr;
+                            job.zBuffer = zPtr;
+                            job.output1Buffer = outPtr;
+                            job.length = x.Length;
+                            job.amplitude1 = amplitude;
+                            job.xFrequency = xFreq;
+                            job.yFrequency = yFreq;
+                            job.zFrequency = zFreq;
+                            job.seed = seed;
+                            job.Run();
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void RunCellularNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
+            if (centerDistOutput.Length != edgeDistOutput.Length)
+                throw new ArgumentException($"Expected center dist output buffer length {centerDistOutput.Length} to equal edge dist output buffer length {edgeDistOutput.Length}");
+            if (centerDistOutput.Length == 0)
+                throw new ArgumentException($"Output buffer length was 0. Expected > 0.");
+            if (centerDistOutput.Length != x.Length)
+                throw new ArgumentException($"Expected x buffer length {x.Length} to equal output buffer length {centerDistOutput.Length}");
+            if (centerDistOutput.Length != y.Length)
+                throw new ArgumentException($"Expected y buffer length {y.Length} to equal output buffer length {centerDistOutput.Length}");
+
+            fixed (float* xPtr = x)
+            {
+                fixed (float* yPtr = y)
+                {
+                    fixed (float* centerOutPtr = centerDistOutput)
+                    {
+                        fixed (float* edgeOutPtr = edgeDistOutput)
+                        {
+
+                            BurstNoiseJob job = new();
+                            job.noiseType = NoiseType.CellularNoise2D;
+                            job.xBuffer = xPtr;
+                            job.yBuffer = yPtr;
+                            job.output1Buffer = centerOutPtr;
+                            job.output2Buffer = edgeOutPtr;
+                            job.length = centerDistOutput.Length;
+                            job.amplitude1 = centerDistAmplitude;
+                            job.amplitude2 = edgeDistAmplitude;
+                            job.xFrequency = xFreq;
+                            job.yFrequency = yFreq;
+                            job.seed = seed;
+                            job.Run();
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void RunCellularNoise3DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, ReadOnlySpan<float> z, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
+            if (centerDistOutput.Length != edgeDistOutput.Length)
+                throw new ArgumentException($"Expected center dist output buffer length {centerDistOutput.Length} to equal edge dist output buffer length {edgeDistOutput.Length}");
+            if (centerDistOutput.Length == 0)
+                throw new ArgumentException($"Output buffer length was 0. Expected > 0.");
+            if (centerDistOutput.Length != x.Length)
+                throw new ArgumentException($"Expected x buffer length {x.Length} to equal output buffer length {centerDistOutput.Length}");
+            if (centerDistOutput.Length != y.Length)
+                throw new ArgumentException($"Expected y buffer length {y.Length} to equal output buffer length {centerDistOutput.Length}");
+            if (centerDistOutput.Length != z.Length)
+                throw new ArgumentException($"Expected z buffer length {z.Length} to equal output buffer length {centerDistOutput.Length}");
+
+            fixed (float* xPtr = x)
+            {
+                fixed (float* yPtr = y)
+                {
+                    fixed (float* zPtr = z)
+                    {
+                        fixed (float* centerOutPtr = centerDistOutput)
+                        {
+                            fixed (float* edgeOutPtr = edgeDistOutput)
+                            {
+
+                                BurstNoiseJob job = new();
+                                job.noiseType = NoiseType.CellularNoise3D;
+                                job.xBuffer = xPtr;
+                                job.yBuffer = yPtr;
+                                job.zBuffer = zPtr;
+                                job.output1Buffer = centerOutPtr;
+                                job.output2Buffer = edgeOutPtr;
+                                job.length = centerDistOutput.Length;
+                                job.amplitude1 = centerDistAmplitude;
+                                job.amplitude2 = edgeDistAmplitude;
+                                job.xFrequency = xFreq;
+                                job.yFrequency = yFreq;
+                                job.zFrequency = zFreq;
+                                job.seed = seed;
+                                job.Run();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+#endif
 }
