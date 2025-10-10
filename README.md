@@ -27,7 +27,7 @@ Performance data:
 Copy the file Noise.cs from the NoiseDotNet folder into your project. That's it!
 
 ## How to use
-The noise functions are in the static Noise class in the NoiseDotNet namespace. Here is a short example of using one:
+The noise functions are in the static `Noise` class in the `NoiseDotNet` namespace. Here is a short example of using the `Noise` class:
 
 ```csharp
 int width = 16, height = 16;
