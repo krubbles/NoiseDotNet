@@ -15,6 +15,7 @@ By default the Gradient noise calls use the Quadratic noise algorithm, which is 
 Performance data:
 
 | Noise Type x Impl.     | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
+| :--------------------- | --------------------: | ------------------: | -----------------: |
 | Gradient2D (quadratic) | 1.35                  | 1.37                | N/A                |
 | Gradient2D (perlin)    | 1.14                  | 1.11                | 1.62               |
 | Gradient3D (quadratic) | 2.97                  | 2.39                | N/A                |
