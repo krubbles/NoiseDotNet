@@ -1,4 +1,5 @@
 # NoiseDotNet
+## Overview
 NoiseDotNet is a coherent noise library written in C#. It is 
 - Extremely optimized (w/ SIMD acceleration)
 - Lightweight (single file you can drop into your project)
@@ -12,7 +13,9 @@ It supports 4 noise functions:
 
 By default the Gradient noise calls use the Quadratic noise algorithm, which is a modified version of Perlin noise with improved quality. You can swap it to use Perlin noise by removing the `#define Quadratic` statement at the top of the Noise.cs file. 
 
-Performance data:
+## Preformance
+Here is a preformance chart for NoiseDotNet, with FastNoise2 included as a baseline. 
+Preformance is measured in nanoseconds per sample. Profiled on a Ryzen 9 6900HS.
 
 |                        | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
 | :--------------------- | --------------------: | ------------------: | -----------------: |
