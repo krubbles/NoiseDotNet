@@ -67,22 +67,42 @@ namespace NoiseDotNet
         /// <param name="seed">The seed for the noise function.</param>
         public static unsafe void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
         {
-            int length = output.Length;
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
-            for (int i = 0; i < length - Float.Count; i += Float.Count)
+            int length = output.Length;
+            if (length < Float.Count)
             {
-                Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
-                Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
-                Float result = GradientNoise2DVector(xVec, yVec, seedVec) * amplitude;
-                result.StoreUnsafe(ref output[i]);
+                // if the buffer doesn't have enough elements to fit into a vector,
+                // we can't use the load and store instructions, so we have to build the vector element by element instead.
+                Float xVec = default;
+                Float yVec = default;
+                for (int i = 0; i < length; ++i)
+                {
+                    xVec = xVec.WithElement(i, xCoords[i]);
+                    yVec = yVec.WithElement(i, yCoords[i]);
+                }
+                Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * amplitude;
+                for (int i = 0; i < length; ++i)
+                {
+                    output[i] = result.GetElement(i);
+                }
             }
+            else
             {
-                int i = length - Float.Count;
-                Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
-                Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
-                Float result = GradientNoise2DVector(xVec, yVec, seedVec) * amplitude;
-                result.StoreUnsafe(ref output[i]);
+                for (int i = 0; i < length - Float.Count; i += Float.Count)
+                {
+                    Float xVec = Util.LoadUnsafe(ref xCoords[i]);
+                    Float yVec = Util.LoadUnsafe(ref yCoords[i]);
+                    Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * amplitude;
+                    result.StoreUnsafe(ref output[i]);
+                }
+                {
+                    int i = length - Float.Count;
+                    Float xVec = Util.LoadUnsafe(ref xCoords[i]);
+                    Float yVec = Util.LoadUnsafe(ref yCoords[i]);
+                    Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * amplitude;
+                    result.StoreUnsafe(ref output[i]);
+                }
             }
         }
 #else
