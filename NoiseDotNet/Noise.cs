@@ -155,7 +155,7 @@ namespace NoiseDotNet
             }
             int endIndex = length - Float.Count;
             Float xEnd = Util.LoadUnsafe(ref xCoords[endIndex]) * xfVec;
-            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * xfVec;
+            Float yEnd = Util.LoadUnsafe(ref yCoords[endIndex]) * yfVec;
             Float zEnd = Util.LoadUnsafe(ref zCoords[endIndex]) * zfVec;
             Float resultEnd = GradientNoise3DVector(xEnd, yEnd, zEnd, seedVec) * amplitude;
             resultEnd.StoreUnsafe(ref output[endIndex]);
@@ -286,7 +286,7 @@ namespace NoiseDotNet
             {
                 (float centerDist, float edgeDist) = CellularNoise2DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, seed);
                 centerDistOutput[i] = centerDist * centerDistAmplitude;
-                edgeDistOutput[i] = edgeDist * centerDistAmplitude;
+                edgeDistOutput[i] = edgeDist * edgeDistAmplitude;
             }
         }
 #endif
@@ -378,9 +378,9 @@ namespace NoiseDotNet
             // this will be auto-vectorized by Burst.
             for (int i = 0; i < length; ++i)
             {
-                (float centerDist, float edgeDist) = CellularNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * yFreq, seed);
+                (float centerDist, float edgeDist) = CellularNoise3DVector(xCoords[i] * xFreq, yCoords[i] * yFreq, zCoords[i] * zFreq, seed);
                 centerDistOutput[i] = centerDist * centerDistAmplitude;
-                edgeDistOutput[i] = edgeDist * centerDistAmplitude;
+                edgeDistOutput[i] = edgeDist * edgeDistAmplitude;
             }
         }
 #endif
