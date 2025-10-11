@@ -15,7 +15,7 @@ By default `GradientNoise2D` and `GradientNoise3D` calls use the Quadratic noise
 
 ## Preformance
 Here is a preformance chart for NoiseDotNet, with FastNoise2 included as a baseline. 
-Preformance is measured in nanoseconds per sample. Profiled on a Ryzen 9 6900HS.
+Preformance is measured in nanoseconds per sample. Profiled on a Ryzen 9 6900HS w/ AVX2 compadibility level.
 
 |                        | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
 | :--------------------- | --------------------: | ------------------: | -----------------: |
