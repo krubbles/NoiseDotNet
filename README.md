@@ -11,7 +11,7 @@ It supports 4 noise functions:
 - CellularNoise2D
 - CellularNoise3D
 
-By default `GradientNoise2D` and `GradientNoise3D` calls use the Quadratic noise algorithm, which is a modified version of Perlin noise with improved quality. You can swap it to use Perlin noise by removing the `#define QUADRATIC` statement at the top of the Noise.cs file. 
+By default `GradientNoise2D` and `GradientNoise3D` calls use the [Quadratic noise algorithm](https://milesoetzel.substack.com/p/introducing-quadratic-noise-a-better), which is a modified version of Perlin noise with improved quality. You can swap it to use Perlin noise by removing the `#define QUADRATIC` statement at the top of the Noise.cs file. 
 
 ## Preformance
 Here is a preformance chart for NoiseDotNet, with FastNoise2 included as a baseline. 
