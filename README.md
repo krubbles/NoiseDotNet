@@ -63,3 +63,5 @@ NoiseDotNet.Noise.GradientNoise2D(
 // The result of the noise function calculation is now in the output buffer.
 // output[i] = GradientNoise(xCoords[i], yCoords[i])
 ```
+
+*Note: This repo is a newer version of my Icaria-Noise repo.*
