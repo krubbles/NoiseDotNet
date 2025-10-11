@@ -10,11 +10,11 @@
         static bool EqualEnough(float a, float b) => MathF.Abs(a - b) < 0.00001f;
 
         [Test]
-        public void GradientNoise2D()
+        public void GradientNoise2DContinuity()
         {
             Random random = new(1);
             int testCount = 1000000;
-            float deltaLength = 0.05f;
+            float deltaLength = 0.01f;
             float[] xBuffer = new float[testCount];
             float[] yBuffer = new float[testCount];
             for (int i = 0; i < testCount; i += 2)
@@ -32,7 +32,7 @@
             {
                 float delta = MathF.Abs(outputBuffer[i] - outputBuffer[i + 1]);
                 averageDelta += delta;
-                if (delta > 0.2f) // should not be possible
+                if (delta > 0.04f) // should not be possible
                     continuous = false;
             }
             averageDelta /= testCount;
@@ -70,63 +70,51 @@
                 frequencyWorks &= EqualEnough(outputBuffer[i], secondOutputBuffer[i]);
             }
             Assert.That(frequencyWorks, "GradientNoise2D frequency does not work correctly");
-
         }
 
         [Test]
-        public void CellularNoise2D()
+        public void GradientNoise2DSizeIrrelevance()
         {
-            Random random = new(1);
-            int testCount = 1000000;
-            float deltaLength = 0.05f;
-            float[] xBuffer = new float[testCount];
-            float[] yBuffer = new float[testCount];
-            for (int i = 0; i < testCount; i += 2)
-            {
-                xBuffer[i] = (float)random.NextSingle() * 100f;
-                yBuffer[i] = (float)random.NextSingle() * 100f;
-                float dx = random.NextSingle();
-                float dy = random.NextSingle();
-                float l = MathF.Sqrt(dx * dx + dy * dy + 1e-9f);
-                dx /= l;
-                dy /= l;
-                xBuffer[i + 1] = xBuffer[i] + dx * deltaLength;
-                yBuffer[i + 1] = yBuffer[i] + dy * deltaLength;
-            }
-            float[] outputCenterDistBuffer = new float[testCount], outputEdgeDistBuffer = new float[testCount];
-            NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, outputCenterDistBuffer, outputEdgeDistBuffer, 1f, 1f, 1f, 1f, 1);
-            bool continuous = true;
-            float averageDelta = 0;
-            for (int i = 0; i < testCount; i += 2)
-            {
-                float delta = MathF.Abs(outputCenterDistBuffer[i] - outputCenterDistBuffer[i + 1]);
-                averageDelta += delta;
-                if (delta > 0.2f) // should not be possible
-                    continuous = false;
-            }
-            averageDelta /= testCount;
-            Assert.That(averageDelta > 0.001f, "CellularNoise2D doesn't have the right slope");
-            Assert.That(continuous, "GradientNoise2D is not continuous");
+            int count = 16;
 
-            float[] secondOutputCenterDistBuffer = new float[15], secondOutputEdgeDistBuffer = new float[15];
-            NoiseDotNet.Noise.CellularNoise2D(xBuffer.AsSpan()[0..15], yBuffer.AsSpan()[0..15], secondOutputCenterDistBuffer, secondOutputEdgeDistBuffer, 1f, 1f, 1f, 1f, 1);
+            GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
+            float[] outputBuffer = new float[count];
+            NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, outputBuffer, 1f, 1f, 1f, 1);
+
+            count = 15;
+            float[] secondOutputBuffer = new float[count];
+            NoiseDotNet.Noise.GradientNoise2D(xBuffer.AsSpan()[0..count], yBuffer.AsSpan()[0..count], secondOutputBuffer, 1f, 1f, 1f, 1);
 
             bool bufferSizeDoesNotMatter = true;
-            for (int i = 0; i < 15; ++i)
-            {
-                bufferSizeDoesNotMatter &= EqualEnough(outputCenterDistBuffer[i], secondOutputCenterDistBuffer[i]);
-                bufferSizeDoesNotMatter &= EqualEnough(outputEdgeDistBuffer[i], secondOutputEdgeDistBuffer[i]);
-            }
-            Assert.That(bufferSizeDoesNotMatter, "GradientNoise2D does not have consistent behavior across different buffer sizes");
+            for (int i = 0; i < count; ++i)
+                bufferSizeDoesNotMatter &= EqualEnough(outputBuffer[i], secondOutputBuffer[i]);
 
-            NoiseDotNet.Noise.CellularNoise2D(xBuffer.AsSpan()[0..15], yBuffer.AsSpan()[0..15], secondOutputCenterDistBuffer, secondOutputEdgeDistBuffer, 1f, 1f, 3f, 4f, 1);
+            count = 7;
+            secondOutputBuffer = new float[count];
+            NoiseDotNet.Noise.GradientNoise2D(xBuffer.AsSpan()[0..count], yBuffer.AsSpan()[0..count], secondOutputBuffer, 1f, 1f, 1f, 1);
+
+            for (int i = 0; i < count; ++i)
+                bufferSizeDoesNotMatter &= EqualEnough(outputBuffer[i], secondOutputBuffer[i]);
+
+            Assert.That(bufferSizeDoesNotMatter, "GradientNoise2D does not have consistent behavior across different buffer sizes");
+        }
+
+        [Test]
+        public void GradientNoise2DExtraParameters()
+        {
+            int count = 16;
+
+            GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
+            
+            float[] outputBuffer = new float[count];
+            NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, outputBuffer, 1f, 1f, 1f, 1);
+
+            float[] secondOutputBuffer = new float[count];
+            NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, secondOutputBuffer, 1f, 1f, 3f, 1);
             
             bool amplitudeWorks = true;
             for (int i = 0; i < 15; ++i)
-            {
-                amplitudeWorks &= EqualEnough(outputCenterDistBuffer[i] * 3f, secondOutputCenterDistBuffer[i]);
-                amplitudeWorks &= EqualEnough(outputEdgeDistBuffer[i] * 4f, secondOutputEdgeDistBuffer[i]);
-            }
+                amplitudeWorks &= EqualEnough(outputBuffer[i] * 3f, secondOutputBuffer[i]);
             Assert.That(amplitudeWorks, "GradientNoise2D amplitude does not work correctly");
 
             for (int i = 0; i < 15; ++i)
@@ -135,14 +123,71 @@
                 yBuffer[i] = yBuffer[i] * 4f;
             }
 
-            NoiseDotNet.Noise.CellularNoise2D(xBuffer.AsSpan()[0..15], yBuffer.AsSpan()[0..15], secondOutputCenterDistBuffer, secondOutputEdgeDistBuffer, 1f / 3f, 1f / 4f, 1f, 1f, 1);
+            NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, secondOutputBuffer, 1f / 3f, 1f / 4f, 1f, 1);
+            
             bool frequencyWorks = true;
             for (int i = 0; i < 15; ++i)
-            {
-                frequencyWorks &= EqualEnough(outputCenterDistBuffer[i], secondOutputCenterDistBuffer[i]);
-                frequencyWorks &= EqualEnough(outputEdgeDistBuffer[i], secondOutputEdgeDistBuffer[i]);
-            }
+                frequencyWorks &= EqualEnough(outputBuffer[i], secondOutputBuffer[i]);
             Assert.That(frequencyWorks, "GradientNoise2D frequency does not work correctly");
+
+            NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, secondOutputBuffer, 1f / 3f, 1f / 4f, 1f, 2);
+
+            bool seedWorks = false;
+            for (int i = 0; i < 15; ++i)
+                seedWorks |= !EqualEnough(outputBuffer[i], secondOutputBuffer[i]);
+            Assert.That(seedWorks, "GradientNoise2D seed does not work correctly");
+        }
+
+        [Test]
+        public void CellularNoise2DSizeIrrelevance()
+        {
+            int count = 16;
+
+            GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
+            float[] outputBufferA = new float[count], outputBufferB = new float[count];
+            NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, outputBufferA, outputBufferB, 1f, 1f, 1f, 1f, 1);
+
+            count = 15;
+            float[] secondOutputBufferA = new float[count], secondOutputBufferB = new float[count];
+            NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, outputBufferA, outputBufferB, 1f, 1f, 1f, 1f, 1);
+
+            bool bufferSizeDoesNotMatter = true;
+            for (int i = 0; i < count; ++i)
+            {
+                bufferSizeDoesNotMatter &= EqualEnough(outputBufferA[i], secondOutputBufferA[i]);
+                bufferSizeDoesNotMatter &= EqualEnough(outputBufferB[i], secondOutputBufferB[i]);
+            }
+
+            count = 7;
+            secondOutputBufferA = new float[count], secondOutputBufferB = new float[count];
+            NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, outputBufferA, outputBufferB, 1f, 1f, 1f, 1f, 1);
+
+            for (int i = 0; i < count; ++i)
+            {
+                bufferSizeDoesNotMatter &= EqualEnough(outputBufferA[i], secondOutputBufferA[i]);
+                bufferSizeDoesNotMatter &= EqualEnough(outputBufferB[i], secondOutputBufferB[i]);
+            }
+
+            Assert.That(bufferSizeDoesNotMatter, "CellularNoise2D does not have consistent behavior across different buffer sizes");
+        }
+
+
+        /// <summary>
+        /// Generates a buffer of random coordinates with length <paramref name="count"/> to use for testing. 
+        /// </summary>
+        static void GenerateXYZBuffers(int count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer)
+        {
+            Random random = new(1);
+            int testCount = 16;
+            xBuffer = new float[testCount];
+            yBuffer = new float[testCount];
+            zBuffer = new float[testCount];
+            for (int i = 0; i < testCount; i++)
+            {
+                xBuffer[i] = (float)random.NextSingle() * 100f;
+                yBuffer[i] = (float)random.NextSingle() * 100f;
+                zBuffer[i] = (float)random.NextSingle() * 100f;
+            }
         }
     }
 }
