@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoiseDotNet", "NoiseDotNet.csproj", "{569FC231-C83A-9CC2-AE3D-01B63E7F1698}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoiseDotNet", "NoiseDotNet\NoiseDotNet.csproj", "{569FC231-C83A-9CC2-AE3D-01B63E7F1698}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConsole", "..\TestConsole\TestConsole.csproj", "{03823EB3-D86A-4879-A710-1A690CB12431}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Profiling", "Profiling\Profiling.csproj", "{03823EB3-D86A-4879-A710-1A690CB12431}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "..\Tests\Tests.csproj", "{80AD1604-768D-4F64-9AC6-3873394FC9B0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{80AD1604-768D-4F64-9AC6-3873394FC9B0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
