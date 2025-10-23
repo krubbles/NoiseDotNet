@@ -503,7 +503,7 @@ namespace NoiseDotNet
 
         // All noise function implementations must be inlined so they can be auto-vectorized by Burst. 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static Float GradientNoise2DVector(Float x, Float y, Int seed)
+        public static Float GradientNoise2DVector(Float x, Float y, Int seed)
         {
             Float xFloor = Util.Floor(x);
             Float yFloor = Util.Floor(y);
@@ -598,7 +598,7 @@ namespace NoiseDotNet
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static Float GradientNoise3DVector(Float x, Float y, Float z, Int seed)
+        public static Float GradientNoise3DVector(Float x, Float y, Float z, Int seed)
         {
             Float xFloor = Util.Floor(x);
             Float yFloor = Util.Floor(y);
@@ -720,7 +720,7 @@ namespace NoiseDotNet
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static (Float centerDist, Float edgeDist) CellularNoise2DVector(Float x, Float y, Int seed)
+        public static (Float centerDist, Float edgeDist) CellularNoise2DVector(Float x, Float y, Int seed)
         {
             Float xFloor = Util.Floor(x);
             Float yFloor = Util.Floor(y);
@@ -778,7 +778,7 @@ namespace NoiseDotNet
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static (Float centerDist, Float edgeDist) CellularNoise3DVector(Float x, Float y, Float z, Int seed)
+        public static (Float centerDist, Float edgeDist) CellularNoise3DVector(Float x, Float y, Float z, Int seed)
         {
             Float xFloor = Util.Floor(x);
             Float yFloor = Util.Floor(y);
