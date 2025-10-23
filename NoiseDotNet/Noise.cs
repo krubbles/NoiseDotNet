@@ -54,6 +54,7 @@ using Unity.Burst;
 using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs.LowLevel.Unsafe;
 #endif
 
 using System.Runtime.CompilerServices;
@@ -952,7 +953,13 @@ namespace NoiseDotNet
             }
         }
 
-        public static void RunGradientNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
+        public static void RunGradientNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, Span<float> output,
+            float xFreq, float yFreq, float amplitude, int seed)
+        {
+            CreateGradientNoise2DJob(x, y, output, xFreq, yFreq, amplitude, seed).Run();
+        }
+
+        public static BurstNoiseJob CreateGradientNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
         {
             if (output.Length == 0)
                 throw new ArgumentException($"Output buffer length was 0. Expected > 0.");
@@ -977,13 +984,18 @@ namespace NoiseDotNet
                         job.xFrequency = xFreq;
                         job.yFrequency = yFreq;
                         job.seed = seed;
-                        job.Run();
+                        return job;
                     }
                 }
             }
         }
 
         public static void RunGradientNoise3DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, ReadOnlySpan<float> z, Span<float> output, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
+        {
+            CreateGradientNoise3DJob(x, y, z, output, xFreq, yFreq, zFreq, amplitude, seed).Run();
+        }
+        
+        public static BurstNoiseJob CreateGradientNoise3DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, ReadOnlySpan<float> z, Span<float> output, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
         {
             if (output.Length == 0)
                 throw new ArgumentException($"Output buffer length was 0. Expected > 0.");
@@ -1014,14 +1026,22 @@ namespace NoiseDotNet
                             job.yFrequency = yFreq;
                             job.zFrequency = zFreq;
                             job.seed = seed;
-                            job.Run();
+                            return job;
                         }
                     }
                 }
             }
         }
 
-        public static void RunCellularNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        public static void RunCellularNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y,
+            Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq,
+            float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
+            CreateCellularNoise2DJob(x, y, centerDistOutput, edgeDistOutput, xFreq, yFreq, centerDistAmplitude,
+                edgeDistAmplitude, seed).Run();
+        }
+
+        public static BurstNoiseJob CreateCellularNoise2DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
         {
             if (centerDistOutput.Length != edgeDistOutput.Length)
                 throw new ArgumentException($"Expected center dist output buffer length {centerDistOutput.Length} to equal edge dist output buffer length {edgeDistOutput.Length}");
@@ -1040,7 +1060,6 @@ namespace NoiseDotNet
                     {
                         fixed (float* edgeOutPtr = edgeDistOutput)
                         {
-
                             BurstNoiseJob job = new();
                             job.noiseType = NoiseType.CellularNoise2D;
                             job.xBuffer = xPtr;
@@ -1053,14 +1072,22 @@ namespace NoiseDotNet
                             job.xFrequency = xFreq;
                             job.yFrequency = yFreq;
                             job.seed = seed;
-                            job.Run();
+                            return job;
                         }
                     }
                 }
             }
         }
 
-        public static void RunCellularNoise3DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, ReadOnlySpan<float> z, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        public static void RunCellularNoise3DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, ReadOnlySpan<float> z,
+            Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float zFreq,
+            float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        {
+            CreateCellularNoise3DJob(x, y, z, centerDistOutput, edgeDistOutput, xFreq, yFreq, zFreq,
+                centerDistAmplitude, edgeDistAmplitude, seed).Run();
+        }
+
+        public static BurstNoiseJob CreateCellularNoise3DJob(ReadOnlySpan<float> x, ReadOnlySpan<float> y, ReadOnlySpan<float> z, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
         {
             if (centerDistOutput.Length != edgeDistOutput.Length)
                 throw new ArgumentException($"Expected center dist output buffer length {centerDistOutput.Length} to equal edge dist output buffer length {edgeDistOutput.Length}");
@@ -1083,7 +1110,6 @@ namespace NoiseDotNet
                         {
                             fixed (float* edgeOutPtr = edgeDistOutput)
                             {
-
                                 BurstNoiseJob job = new();
                                 job.noiseType = NoiseType.CellularNoise3D;
                                 job.xBuffer = xPtr;
@@ -1098,7 +1124,7 @@ namespace NoiseDotNet
                                 job.yFrequency = yFreq;
                                 job.zFrequency = zFreq;
                                 job.seed = seed;
-                                job.Run();
+                                return job;
                             }
                         }
                     }
