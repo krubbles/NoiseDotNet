@@ -916,6 +916,14 @@ namespace NoiseDotNet
 
 #if UNITY
 
+    public enum NoiseType
+    {
+        GradientNoise2D,
+        GradientNoise3D,
+        CellularNoise2D,
+        CellularNoise3D
+    }
+    
     /// <summary>
     /// Burst Job for evaluating noise functions from the <see cref="Noise"/> class.
     /// Used by the functions in the <see cref="Noise"/> class internally, however if you want to run the job asynchronously you can use this struct.
