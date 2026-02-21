@@ -81,11 +81,8 @@ namespace NoiseDotNet
         /// <param name="xCoords">The x-coordinates of the sample points.</param>
         /// <param name="yCoords">The y-coordinates of the sample points.</param>
         /// <param name="output">The output buffer evaluations are written into.</param>
-        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
-        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
-        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
-        /// <param name="seed">The seed for the noise function.</param>
-        public static unsafe void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, in NoiseSettings settings)
+        /// <param name="settings">The settings for the noise function.</param>
+        public static void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, in NoiseSettings settings)
         {
             (float xFreq, float yFreq, _, float amplitude, _, int seed) = settings;
 
@@ -171,13 +168,9 @@ namespace NoiseDotNet
         /// <param name="yCoords">The y-coordinates of the sample points.</param>
         /// <param name="zCoords">The z-coordinates of the sample points.</param>
         /// <param name="output">The output buffer evaluations are written into.</param>
-        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
-        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
-        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
-        /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
-        /// <param name="seed">The seed for the noise function.</param>
+        /// <param name="settings">The settings for the noise function.</param>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static unsafe void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, in NoiseSettings settings)
+        public static void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, in NoiseSettings settings)
         {
             (float xFreq, float yFreq, float zFreq, float amplitude, _, int seed) = settings;
 
@@ -267,12 +260,8 @@ namespace NoiseDotNet
         /// <param name="yCoords">The y-coordinates of the sample points.</param>
         /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
         /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
-        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
-        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
-        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
-        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
-        /// <param name="seed">The seed for the noise function.</param>
-        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
+        /// <param name="settings">The settings for the noise function.</param>
+        public static void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
             (float xFreq, float yFreq, _, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
 
@@ -372,13 +361,8 @@ namespace NoiseDotNet
         /// <param name="zCoords">The z-coordinates of the sample points.</param>
         /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
         /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
-        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
-        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
-        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
-        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
-        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
-        /// <param name="seed">The seed for the noise function.</param>
-        public static unsafe void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
+        /// <param name="settings">The settings for the noise function.</param>
+        public static void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
             (float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
 
