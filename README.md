@@ -38,7 +38,7 @@ Profiled on an M4 Macbook Air. Will update with Unity results shortly.
 | Cellular3D             | 10.89ns               | Not tested yet.     | 25.8ns             |
 
 ## How to add to your project
-Copy the file Noise.cs from the NoiseDotNet folder into your project. That's it!
+Copy the NoiseDotNet folder into your project, and remove the .csproj file if you are using Unity. That's it!
 
 ## How to use
 The noise functions are in the static `Noise` class in the `NoiseDotNet` namespace. Here is a short example of using the `Noise` class:
@@ -62,14 +62,20 @@ for (int y = 0; y < height; ++y)
 // allocating a buffer to use as the output
 float[] output = new float[sampleCount];
 
+// settings for the noise function evaluation. Supports xFreq, yFreq, zFreq, seed, amplitude, amplitude2 
+// second amplitude is used by cellular noise which has 2 outputs, cell center dist is amplitude and cell edge dist is amplitude2
+// coordinates are multiplied by their corresponding frequencies before being passed into the noise function 
+// the outputs of the noise function are multipled by their corresponding amplitudes before being passed into the output buffer.
+// note that if the amplitude is zero (which it defaults to if you default construct the settings struct), the output will always be zero.
+// non-default constructors default amplitudes to 1. 
+// zFreq is ignored by 3D functions.
+NoiseDotNet.NoiseSettings settings = new(xFreq: 0.1f, yFreq: 0.1f, seed: 100);
+
 NoiseDotNet.Noise.GradientNoise2D(
     xCoords: xCoords,
     yCoords: yCoords,
     output: output,
-    xFreq: 0.1f, // x-coordinates are multiplied by this value before being used
-    yFreq: 0.1f, // y-coordinates are multiplied by this value before being used
-    amplitude: 1f, // the result of the noise function is multiplied by this value
-    seed: 100);
+    settings);
 
 // The result of the noise function calculation is now in the output buffer.
 // output[i] = GradientNoise(xCoords[i], yCoords[i])
