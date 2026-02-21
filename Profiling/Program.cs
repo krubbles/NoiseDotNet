@@ -33,24 +33,24 @@ public class Benchmark
     [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void GradientNoise2D()
     {
-        Noise.GradientNoise2D(xArray, yArray, result, 0.1f, 0.1f, 1f, 1);
+        Noise.GradientNoise2D(xArray, yArray, result, new(xFreq: 0.1f, yFreq: 0.1f, seed: 1));
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void GradientNoise3D()
     {
-        Noise.GradientNoise3D(xArray, yArray, zArray, result, 0.1f, 0.1f, 0.1f, 1f, 1);
+        Noise.GradientNoise3D(xArray, yArray, zArray, result, new(xFreq: 0.1f, yFreq: 0.1f, zFreq: 0.1f, seed: 1));
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void CellularNoise2D()
     {
-        Noise.CellularNoise2D(xArray, yArray, result, result2, 0.1f, 0.1f, 1f, 1f, 1);
+        Noise.CellularNoise2D(xArray, yArray, result, result2, new(xFreq: 0.1f, yFreq: 0.1f, seed: 1));
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void CellularNoise3D()
     {
-        Noise.CellularNoise3D(xArray, yArray, zArray, result, result2, 0.1f, 0.1f, 0.1f, 1f, 1f, 1);
+        Noise.CellularNoise3D(xArray, yArray, zArray, result, result2, new(xFreq: 0.1f, yFreq: 0.1f, zFreq: 0.1f, seed: 1));
     }
 }
