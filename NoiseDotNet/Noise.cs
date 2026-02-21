@@ -85,8 +85,10 @@ namespace NoiseDotNet
         /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
         /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
         /// <param name="seed">The seed for the noise function.</param>
-        public static unsafe void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, float xFreq, float yFreq, float amplitude, int seed)
+        public static unsafe void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, in NoiseSettings settings)
         {
+            (float xFreq, float yFreq, _, float amplitude, _, int seed) = settings;
+
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), ampVec = Util.Create(amplitude);
             int length = output.Length;
@@ -181,8 +183,10 @@ namespace NoiseDotNet
         /// <param name="amplitude">The output of the noise function is multiplied by this number before being written into the output buffer.</param>
         /// <param name="seed">The seed for the noise function.</param>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static unsafe void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, float xFreq, float yFreq, float zFreq, float amplitude, int seed)
+        public static unsafe void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, in NoiseSettings settings)
         {
+            (float xFreq, float yFreq, float zFreq, float amplitude, _, int seed) = settings;
+
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq), ampVec = Util.Create(amplitude);
             int length = output.Length;
@@ -282,8 +286,10 @@ namespace NoiseDotNet
         /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
         /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
         /// <param name="seed">The seed for the noise function.</param>
-        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        public static unsafe void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
+            (float xFreq, float yFreq, _, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
+
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
             Float centerAmpVec = Util.Create(centerDistAmplitude), edgeAmpVec = Util.Create(edgeDistAmplitude);
@@ -395,8 +401,10 @@ namespace NoiseDotNet
         /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
         /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
         /// <param name="seed">The seed for the noise function.</param>
-        public static unsafe void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed)
+        public static unsafe void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
+            (float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
+
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq);
             Float centerAmpVec = Util.Create(centerDistAmplitude), edgeAmpVec = Util.Create(edgeDistAmplitude);
