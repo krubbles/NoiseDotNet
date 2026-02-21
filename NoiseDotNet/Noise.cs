@@ -41,7 +41,6 @@
 
 #if CORECLR
 using System.Numerics;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
 using Int = System.Numerics.Vector<int>;
 using Float = System.Numerics.Vector<float>;

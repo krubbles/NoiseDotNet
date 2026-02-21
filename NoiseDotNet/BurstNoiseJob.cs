@@ -8,7 +8,7 @@ using System;
 
 namespace NoiseDotNet
 {
-        public enum NoiseType
+    public enum NoiseType
     {
         GradientNoise2D,
         GradientNoise3D,
