@@ -6,8 +6,8 @@ BenchmarkRunner.Run<Benchmark>();
 
 public class Benchmark
 {
-    float[] xArray, yArray, zArray;
-    float[] result, result2;
+    float[] xArray = [], yArray = [], zArray = [];
+    float[] result = [], result2 = [];
 
     [GlobalSetup]
     public void Setup()
