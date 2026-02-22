@@ -11,7 +11,7 @@ It supports 4 noise functions:
 - CellularNoise2D
 - CellularNoise3D
 
-By default `GradientNoise2D` and `GradientNoise3D` calls use the [Quadratic noise algorithm](https://milesoetzel.substack.com/p/introducing-quadratic-noise-a-better), which is a modified version of Perlin noise with improved quality. You can swap it to use Perlin noise by removing the `#define QUADRATIC` statement at the top of the Noise.cs file. 
+By default `GradientNoise2D` and `GradientNoise3D` calls use the [Quadratic noise algorithm](https://milesoetzel.substack.com/p/introducing-quadratic-noise-a-better), which is a modified version of Perlin noise with improved quality. You can swap it to use Perlin noise by removing the `#define QUADRATIC` statement at the top of the NoiseImpls.cs file. 
 
 ## Preformance
 Here are some preformance charts for NoiseDotNet, with FastNoise2 included as a baseline. Preformance is measured in nanoseconds per sample. 
@@ -28,14 +28,15 @@ Profiled on a Ryzen 9 6900HS, AVX2 compadibility level, Windows 11.
 | Cellular3D             | 16.3ns                | 9.32ns              | 22.7ns             |
 
 Profiled on an M4 Macbook Air. Will update with Unity results shortly. 
+
 |                        | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
 | :--------------------- | --------------------: | ------------------: | -----------------: |
-| Gradient2D (quadratic) | 1.71ns                | Not tested yet.     | N/A                |
-| Gradient2D (perlin)    | 1.32ns                | Not tested yet.     | 2.55ns             |
-| Gradient3D (quadratic) | 2.98ns                | Not tested yet.     | N/A                |
-| Gradient3D (perlin)    | 2.44ns                | Not tested yet.     | 5.03ns             |
-| Cellular2D             | 2.78ns                | Not tested yet.     | 9.40ns             |
-| Cellular3D             | 10.89ns               | Not tested yet.     | 25.8ns             |
+| Gradient2D (quadratic) | 1.71ns                | 1.49ns              | N/A                |
+| Gradient2D (perlin)    | 1.32ns                | 1.24ns              | 2.55ns             |
+| Gradient3D (quadratic) | 2.98ns                | 2.90ns              | N/A                |
+| Gradient3D (perlin)    | 2.44ns                | 2.34ns              | 5.03ns             |
+| Cellular2D             | 2.78ns                | 4.06ns              | 9.40ns             |
+| Cellular3D             | 10.89ns               | 14.2ns              | 25.8ns             |
 
 ## How to add to your project
 Copy the NoiseDotNet folder into your project, and remove the .csproj file if you are using Unity. That's it!

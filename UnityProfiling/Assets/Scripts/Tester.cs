@@ -1,59 +1,108 @@
+using System;
 using UnityEngine;
+using System.Diagnostics;
+using Debug = UnityEngine.Debug;
 
 public class Tester : MonoBehaviour
 {
-    public Texture2D OuptutTexture;
+    public const float ProfilingTimeMS = 10000;
+    public const int Size = 224;
+    public const int SampleCount = Size * Size;
+    NoiseDotNet.NoiseSettings settings = new(xFreq: 0.1f, yFreq: 0.1f, zFreq: 0.1f, seed: 100);
+
+    float[] xCoords = new float[SampleCount];
+    float[] yCoords = new float[SampleCount];
+    float[] zCoords = new float[SampleCount];
+    float[] output = new float[SampleCount];
+    float[] output2 = new float[SampleCount];
 
     void Start()
     {
-        int width = 128, height = 128;
-        int sampleCount = width * height;
+        InitCoordinateBuffers();
+        RunAllProfiles();
+    }
 
-        // here we create a 2D grid of points to evaluate the noise function on
-        float[] xCoords = new float[sampleCount];
-        float[] yCoords = new float[sampleCount];
+    void RunAllProfiles()
+    {
+        LogProfile("GradientNoise2D", () =>
+        {
+            NoiseDotNet.Noise.GradientNoise2D(xCoords, yCoords, output, settings);
+        });
+
+        LogProfile("GradientNoise3D", () =>
+        {
+            NoiseDotNet.Noise.GradientNoise3D(xCoords, yCoords, zCoords, output, settings);
+        });
+
+        LogProfile("CellularNoise2D", () =>
+        {
+            NoiseDotNet.Noise.CellularNoise2D(xCoords, yCoords, output, output2, settings);
+        });
+
+        LogProfile("CellularNoise3D", () =>
+        {
+            NoiseDotNet.Noise.CellularNoise3D(xCoords, yCoords, zCoords, output, output2, settings);
+        });
+    }
+
+    void LogProfile(string label, Action action)
+    {
+        float avgMs = Profile(action, ProfilingTimeMS);
+        float averageNS = avgMs * 1e6f / SampleCount;
+        Debug.Log($"{label}: {averageNS:F4} ns per sample");
+    }
+
+    void InitCoordinateBuffers()
+    {
         int index = 0;
-        for (int y = 0; y < height; ++y)
-            for (int x = 0; x < width; ++x)
+        for (int y = 0; y < Size; ++y)
+            for (int x = 0; x < Size; ++x)
             {
                 xCoords[index] = x;
                 yCoords[index] = y;
+                zCoords[index] = x + y;
                 index++;
             }
-
-        // allocating a buffer to use as the output
-        float[] output = new float[sampleCount];
-
-        // settings for the noise function evaluation. Supports xFreq, yFreq, zFreq, seed, amplitude, amplitude2 
-        // second amplitude is used by cellular noise which has 2 outputs, cell center dist is amplitude and cell edge dist is amplitude2
-        // coordinates are multiplied by their corresponding frequencies before being passed into the noise function 
-        // the outputs of the noise function are multipled by their corresponding amplitudes before being passed into the output buffer.
-        // note that if the amplitude is zero (which it defaults to if you default construct the settings struct), the output will always be zero.
-        // non-default constructors default amplitudes to 1. 
-        // zFreq is ignored by 3D functions.
-        NoiseDotNet.NoiseSettings settings = new(xFreq: 0.1f, yFreq: 0.1f, seed: 100);
-
-        NoiseDotNet.Noise.GradientNoise2D(
-            xCoords: xCoords,
-            yCoords: yCoords,
-            output: output,
-            settings);
-        
-        Color32[] colors = new Color32[sampleCount];
-        for (int i = 0; i < sampleCount; ++i)
-        {
-            byte value = (byte)(Mathf.Clamp01(output[i] * 0.5f + 0.5f) * 255.99f);
-            colors[i] = new Color32(value, value, value, 255);
-        }
-        OuptutTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-        OuptutTexture.SetPixels32(colors);
-        OuptutTexture.Apply();
     }
 
-    void OnDestroy()
+    float Profile(Action action, float timeMS = 1000)
     {
-        if (OuptutTexture != null)
-            Destroy(OuptutTexture);
+        action();
+
+        var sw = Stopwatch.StartNew();
+        action();
+        sw.Stop();
+
+        double singleRunMs = Math.Max(sw.Elapsed.TotalMilliseconds, 3e-5f);
+        int runCount = Math.Max(1, (int)Math.Floor(timeMS / singleRunMs));
+
+        float[] samples = new float[runCount];
+
+        for (int i = 0; i < runCount; i++)
+        {
+            sw.Restart();
+            action();
+            sw.Stop();
+            samples[i] = (float)sw.Elapsed.TotalMilliseconds;
+        }
+
+        Array.Sort(samples);
+
+        int trim = (int)Math.Floor(runCount * 0.05);
+        int start = trim;
+        int end = runCount - trim;
+
+        if (end <= start)
+        {
+            start = 0;
+            end = runCount;
+        }
+
+        double sum = 0.0;
+        for (int i = start; i < end; i++)
+            sum += samples[i];
+
+        return (float)(sum / (end - start));
     }
 }
     

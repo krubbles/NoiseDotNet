@@ -20,17 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// GradientNoise2D() and GradientNoise3D() can either use Quadratic Noise or Perlin Noise as their underlying algorithm.
-// Quadratic noise is better quality, but Perlin Noise is around 20% faster. Quadratic noise is recommended.
-// If you would like to switch to Perlin noise, remove the #define QUADRATIC statement.
-#define QUADRATIC
-
-#if UNITY_2017_1_OR_NEWER
-#define UNITY
-#else
-#define CORECLR
-#endif
-
 // This library is written to be compatible with both Unity and CoreCLR.
 // In CoreCLR, vectorization is achieved using the System.Numerics.Vector<T> API.
 // In Unity, vectorization is achieved using Burst auto-vectorization.
@@ -38,6 +27,11 @@
 // while in Unity Int and Float simply represent int and float, since Burst will automatically preform vectorization.
 // The benefit of this approach is it involves very little platform-specific vectorized code,
 // so there is no need for multiple versions based on Fma/Avx2 support or ARM.
+#if UNITY_2017_1_OR_NEWER
+#define UNITY
+#else
+#define CORECLR
+#endif
 
 #if CORECLR
 using System.Numerics;
