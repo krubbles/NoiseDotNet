@@ -1,4 +1,7 @@
-#define QUADRATIC
+// GradientNoise2D() and GradientNoise3D() can either use Quadratic Noise or Perlin Noise as their underlying algorithm.
+// Quadratic noise is better quality, but Perlin Noise is around 20% faster. Quadratic noise is recommended.
+// If you would like to switch to Perlin noise, remove the #define QUADRATIC statement.
+// #define QUADRATIC
 
 #if UNITY_2017_1_OR_NEWER
 #define UNITY
