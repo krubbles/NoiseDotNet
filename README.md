@@ -32,9 +32,9 @@ Profiled on an M4 Macbook Air. Will update with Unity results shortly.
 |                        | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
 | :--------------------- | --------------------: | ------------------: | -----------------: |
 | Gradient2D (quadratic) | 1.71ns                | 1.49ns              | N/A                |
-| Gradient2D (perlin)    | 1.32ns                | 2.90ns              | 2.55ns             |
+| Gradient2D (perlin)    | 1.32ns                | 1.24ns              | 2.55ns             |
 | Gradient3D (quadratic) | 2.98ns                | 2.90ns              | N/A                |
-| Gradient3D (perlin)    | 2.44ns                | Not tested yet.     | 5.03ns             |
+| Gradient3D (perlin)    | 2.44ns                | 2.34ns              | 5.03ns             |
 | Cellular2D             | 2.78ns                | 4.06ns              | 9.40ns             |
 | Cellular3D             | 10.89ns               | 14.2ns              | 25.8ns             |
 
