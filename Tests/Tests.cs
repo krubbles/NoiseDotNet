@@ -102,7 +102,8 @@
         [Test]
         public void GradientNoise2DExtraParameters()
         {
-            for (int count = 7; count < 16; count += 8)
+            // we test over multiple counts to catch issues in different branching paths based on count (<8, divisable by 8, not divisible by 8)
+            for (int count = 7; count < 24; count += 8)
             {
                 GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out _);
 
@@ -176,7 +177,7 @@
         [Test]
         public void CellularNoise2DExtraParameters()
         {
-            for (int count = 7; count < 16; count += 8)
+            for (int count = 7; count < 24; count += 8)
             {
                 GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
 
@@ -249,7 +250,7 @@
         [Test]
         public void GradientNoise3DExtraParameters()
         {
-            for (int count = 7; count < 16; count += 8)
+            for (int count = 7; count < 24; count += 8)
             {
                 GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
 
@@ -324,7 +325,7 @@
         [Test]
         public void CellularNoise3DExtraParameters()
         {
-            for (int count = 7; count < 16; count += 8)
+            for (int count = 7; count < 24; count += 8) 
             {
                 GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
 
