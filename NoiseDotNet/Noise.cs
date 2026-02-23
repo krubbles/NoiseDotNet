@@ -83,7 +83,7 @@ namespace NoiseDotNet
         /// <param name="settings">The settings for the noise function.</param>
         public static void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, _, float amplitude, _, int seed) = settings;
+            (float xFreq, float yFreq, _, float amplitude, _, int seed, bool accumulate) = settings;
 
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), ampVec = Util.Create(amplitude);
@@ -101,7 +101,7 @@ namespace NoiseDotNet
                 Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * ampVec;
                 for (int i = 0; i < length; ++i)
                 {
-                    output[i] = result.GetElement(i);
+                    output[i] = accumulate ? output[i] + result.GetElement(i) : result.GetElement(i);
                 }
             }
             else
@@ -111,6 +111,11 @@ namespace NoiseDotNet
                     Float xVec = Util.LoadUnsafe(ref xCoords[i]);
                     Float yVec = Util.LoadUnsafe(ref yCoords[i]);
                     Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * ampVec;
+                    if (accumulate)
+                    {
+                        Float existing = Util.LoadUnsafe(ref output[i]);
+                        result += existing;
+                    }
                     result.StoreUnsafe(ref output[i]);
                 }
                 {
@@ -118,6 +123,11 @@ namespace NoiseDotNet
                     Float xVec = Util.LoadUnsafe(ref xCoords[i]);
                     Float yVec = Util.LoadUnsafe(ref yCoords[i]);
                     Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * ampVec;
+                    if (accumulate)
+                    {
+                        Float existing = Util.LoadUnsafe(ref output[i]);
+                        result += existing;
+                    }
                     result.StoreUnsafe(ref output[i]);
                 }
             }
@@ -171,7 +181,7 @@ namespace NoiseDotNet
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, float zFreq, float amplitude, _, int seed) = settings;
+            (float xFreq, float yFreq, float zFreq, float amplitude, _, int seed, bool accumulate) = settings;
 
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq), ampVec = Util.Create(amplitude);
@@ -190,7 +200,7 @@ namespace NoiseDotNet
                 Float result = GradientNoise3DVector(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec) * ampVec;
                 for (int i = 0; i < length; ++i)
                 {
-                    output[i] = result.GetElement(i);
+                    output[i] = accumulate ? output[i] + result.GetElement(i) : result.GetElement(i);
                 }
             }
             else
@@ -262,7 +272,7 @@ namespace NoiseDotNet
         /// <param name="settings">The settings for the noise function.</param>
         public static void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, _, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
+            (float xFreq, float yFreq, _, float centerDistAmplitude, float edgeDistAmplitude, int seed, bool accumulate) = settings;
 
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
@@ -283,8 +293,8 @@ namespace NoiseDotNet
                 edgeDist *= edgeAmpVec;
                 for (int i = 0; i < length; ++i)
                 {
-                    centerDistOutput[i] = centerDist.GetElement(i);
-                    edgeDistOutput[i] = edgeDist.GetElement(i);
+                    centerDistOutput[i] = accumulate ? centerDistOutput[i] + centerDist.GetElement(i) : centerDist.GetElement(i);
+                    edgeDistOutput[i] = accumulate ? edgeDistOutput[i] + edgeDist.GetElement(i) : edgeDist.GetElement(i);
                 }
             }
             else
@@ -296,6 +306,13 @@ namespace NoiseDotNet
                     (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec);
                     centerDist *= centerAmpVec;
                     edgeDist *= edgeAmpVec;
+                    if (accumulate)
+                    {
+                        Float existingCenter = Util.LoadUnsafe(ref centerDistOutput[i]);
+                        Float existingEdge = Util.LoadUnsafe(ref edgeDistOutput[i]);
+                        centerDist += existingCenter;
+                        edgeDist += existingEdge;
+                    }
                     centerDist.StoreUnsafe(ref centerDistOutput[i]);
                     edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
                 }
@@ -306,6 +323,13 @@ namespace NoiseDotNet
                     (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec);
                     centerDist *= centerAmpVec;
                     edgeDist *= edgeAmpVec;
+                    if (accumulate)
+                    {
+                        Float existingCenter = Util.LoadUnsafe(ref centerDistOutput[i]);
+                        Float existingEdge = Util.LoadUnsafe(ref edgeDistOutput[i]);
+                        centerDist += existingCenter;
+                        edgeDist += existingEdge;
+                    }
                     centerDist.StoreUnsafe(ref centerDistOutput[i]);
                     edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
                 }
@@ -363,7 +387,7 @@ namespace NoiseDotNet
         /// <param name="settings">The settings for the noise function.</param>
         public static void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
+            (float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed, bool accumulate) = settings;
 
             Int seedVec = Util.Create(seed);
             Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq);
@@ -400,6 +424,13 @@ namespace NoiseDotNet
                     (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec);
                     centerDist *= centerAmpVec;
                     edgeDist *= edgeAmpVec;
+                    if (accumulate)
+                    {
+                        Float existingCenter = Util.LoadUnsafe(ref centerDistOutput[i]);
+                        Float existingEdge = Util.LoadUnsafe(ref edgeDistOutput[i]);
+                        centerDist += existingCenter;
+                        edgeDist += existingEdge;
+                    }
                     centerDist.StoreUnsafe(ref centerDistOutput[i]);
                     edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
                 }
@@ -413,6 +444,13 @@ namespace NoiseDotNet
                     (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec);
                     centerDist *= centerAmpVec;
                     edgeDist *= edgeAmpVec;
+                    if (accumulate)
+                    {
+                        Float existingCenter = Util.LoadUnsafe(ref centerDistOutput[i]);
+                        Float existingEdge = Util.LoadUnsafe(ref edgeDistOutput[i]);
+                        centerDist += existingCenter;
+                        edgeDist += existingEdge;
+                    }
                     centerDist.StoreUnsafe(ref centerDistOutput[i]);
                     edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
                 }
