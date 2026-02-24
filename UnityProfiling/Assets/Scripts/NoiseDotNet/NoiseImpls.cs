@@ -1,7 +1,4 @@
-// GradientNoise2D() and GradientNoise3D() can either use Quadratic Noise or Perlin Noise as their underlying algorithm.
-// Quadratic noise is better quality, but Perlin Noise is around 20% faster. Quadratic noise is recommended.
-// If you would like to switch to Perlin noise, remove the #define QUADRATIC statement.
-// #define QUADRATIC
+#define QUADRATIC
 
 #if UNITY_2017_1_OR_NEWER
 #define UNITY
@@ -410,6 +407,56 @@ namespace NoiseDotNet
             d2 = smallest ? d1 : d < d2 ? d : d2;
             d1 = smallest ? d : d1;
 #endif
+        }
+
+                public readonly struct GradientNoise2DFunction : INoiseFunction
+        {
+            public int Dimensions => 2;
+            public int Outputs => 1;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                o1 = GradientNoise2DVector(x, y, seed);
+                o2 = default;
+            }
+        }
+
+        public readonly struct GradientNoise3DFunction : INoiseFunction
+        {
+            public int Dimensions => 3;
+            public int Outputs => 1;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                o1 = GradientNoise3DVector(x, y, z, seed);
+                o2 = default;
+            }
+        }
+
+        public readonly struct CellularNoise2DFunction : INoiseFunction
+        {
+            public int Dimensions => 2;
+            public int Outputs => 2;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                (o1, o2) = CellularNoise2DVector(x, y, seed);
+            }
+        }
+
+        public readonly struct CellularNoise3DFunction : INoiseFunction
+        {
+            public int Dimensions => 3;
+            public int Outputs => 2;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                (o1, o2) = CellularNoise3DVector(x, y, z, seed);
+            }
         }
     }
 

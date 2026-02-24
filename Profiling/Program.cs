@@ -4,6 +4,7 @@ using BenchmarkDotNet.Attributes;
 
 BenchmarkRunner.Run<Benchmark>();
 
+[MemoryDiagnoser]
 public class Benchmark
 {
     float[] xArray = [], yArray = [], zArray = [];

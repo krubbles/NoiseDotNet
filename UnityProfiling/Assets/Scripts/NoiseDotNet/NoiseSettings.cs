@@ -39,23 +39,29 @@ namespace NoiseDotNet
         /// </summary>
         public int Seed;
 
-        public NoiseSettings(float xFreq, float yFreq, float zFreq, float amplitude, float amplitude2, int seed)
+        /// <summary>
+        /// If true, the output of the noise function is added to the existing value in the output buffer instead of replacing it.
+        /// </summary>
+        public bool Accumulate;
+
+        public NoiseSettings(float xFreq, float yFreq, float zFreq, float amplitude, float amplitude2, int seed, bool accumulate = false)
         {
             XFrequency = xFreq;
             YFrequency = yFreq;
             ZFrequency = zFreq;
             Amplitude = amplitude;
+            Accumulate = accumulate;
             Amplitude2 = amplitude2;
             Seed = seed;
         }
 
-        public NoiseSettings(float xFreq, float yFreq, float amplitude, float amplitude2, int seed) : this(xFreq, yFreq, 0f, amplitude, amplitude2, seed) { }
+        public NoiseSettings(float xFreq, float yFreq, float amplitude, float amplitude2, int seed, bool accumulate = false) : this(xFreq, yFreq, 0f, amplitude, amplitude2, seed, accumulate) { }
 
-        public NoiseSettings(float xFreq, float yFreq, int seed) : this(xFreq, yFreq, 0f, 1f, 1f, seed) { }
+        public NoiseSettings(float xFreq, float yFreq, int seed, bool accumulate = false) : this(xFreq, yFreq, 0f, 1f, 1f, seed, accumulate) { }
 
-        public NoiseSettings(float xFreq, float yFreq, float zFreq, int seed) : this(xFreq, yFreq, zFreq, 1f, 1f, seed)  { }
+        public NoiseSettings(float xFreq, float yFreq, float zFreq, int seed, bool accumulate = false) : this(xFreq, yFreq, zFreq, 1f, 1f, seed, accumulate)  { }
 
-        public void Deconstruct(out float xFreq, out float yFreq, out float zFreq, out float amplitude, out float amplitude2, out int seed)
+        public void Deconstruct(out float xFreq, out float yFreq, out float zFreq, out float amplitude, out float amplitude2, out int seed, out bool accumulate)
         {
             xFreq = XFrequency;
             yFreq = YFrequency;
@@ -63,6 +69,7 @@ namespace NoiseDotNet
             amplitude = Amplitude;
             amplitude2 = Amplitude2;
             seed = Seed;
+            accumulate = Accumulate;
         }
     }
 }
