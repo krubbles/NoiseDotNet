@@ -4,7 +4,7 @@ public class Tester : MonoBehaviour
 {
     const int SampleSize = 256;
     const int SampleCount = SampleSize * SampleSize;
-    const float LowestOctaveUnitsPerPixel = 0.002f;
+    const float LowestOctaveUnitsPerPixel = 0.03f;
 
     [SerializeField] Texture2D atlasTexture;
     [SerializeField] int seed = 12345;
