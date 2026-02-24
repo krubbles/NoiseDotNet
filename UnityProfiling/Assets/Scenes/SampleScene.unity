@@ -431,7 +431,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Tester
   atlasTexture: {fileID: 0}
   seed: 12345
-  octaves: 2
+  octaves: 4
   persistence: 0.5
   lacunarity: 2
 --- !u!1660057539 &9223372036854775807

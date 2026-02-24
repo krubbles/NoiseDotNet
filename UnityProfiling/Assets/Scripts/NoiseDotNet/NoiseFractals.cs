@@ -19,13 +19,15 @@ namespace NoiseDotNet
             float xFreq = settings.XFrequency;
             float yFreq = settings.YFrequency;
             float amplitude = settings.Amplitude;
+            int seed = settings.Seed;
             bool accumulate = settings.Accumulate;
 
             for (int octave = 0; octave < octaves; ++octave)
             {
                 // First octave respects settings.Accumulate, subsequent octaves always accumulate.
-                GradientNoise2D(xCoords, yCoords, output, new NoiseSettings(xFreq, yFreq, 0f, amplitude, settings.Amplitude2, settings.Seed, accumulate));
+                GradientNoise2D(xCoords, yCoords, output, new NoiseSettings(xFreq, yFreq, 0f, amplitude, settings.Amplitude2, seed, accumulate));
                 accumulate = true;
+                seed++;
                 xFreq *= lacunarity;
                 yFreq *= lacunarity;
                 amplitude *= persistence;
@@ -49,13 +51,15 @@ namespace NoiseDotNet
             float yFreq = settings.YFrequency;
             float zFreq = settings.ZFrequency;
             float amplitude = settings.Amplitude;
+            int seed = settings.Seed;
             bool accumulate = settings.Accumulate;
 
             for (int octave = 0; octave < octaves; ++octave)
             {
                 // First octave respects settings.Accumulate, subsequent octaves always accumulate.
-                GradientNoise3D(xCoords, yCoords, zCoords, output, new NoiseSettings(xFreq, yFreq, zFreq, amplitude, settings.Amplitude2, settings.Seed, accumulate));
+                GradientNoise3D(xCoords, yCoords, zCoords, output, new NoiseSettings(xFreq, yFreq, zFreq, amplitude, settings.Amplitude2, seed, accumulate));
                 accumulate = true;
+                seed++;
                 xFreq *= lacunarity;
                 yFreq *= lacunarity;
                 zFreq *= lacunarity;
@@ -80,13 +84,15 @@ namespace NoiseDotNet
             float yFreq = settings.YFrequency;
             float amplitude = settings.Amplitude;
             float amplitude2 = settings.Amplitude2;
+            int seed = settings.Seed;
             bool accumulate = settings.Accumulate;
 
             for (int octave = 0; octave < octaves; ++octave)
             {
                 // First octave respects settings.Accumulate, subsequent octaves always accumulate.
-                CellularNoise2D(xCoords, yCoords, centerDistOutput, edgeDistOutput, new NoiseSettings(xFreq, yFreq, 0f, amplitude, amplitude2, settings.Seed, accumulate));
+                CellularNoise2D(xCoords, yCoords, centerDistOutput, edgeDistOutput, new NoiseSettings(xFreq, yFreq, 0f, amplitude, amplitude2, seed, accumulate));
                 accumulate = true;
+                seed++;
                 xFreq *= lacunarity;
                 yFreq *= lacunarity;
                 amplitude *= persistence;
@@ -113,13 +119,15 @@ namespace NoiseDotNet
             float zFreq = settings.ZFrequency;
             float amplitude = settings.Amplitude;
             float amplitude2 = settings.Amplitude2;
+            int seed = settings.Seed;
             bool accumulate = settings.Accumulate;
 
             for (int octave = 0; octave < octaves; ++octave)
             {
                 // First octave respects settings.Accumulate, subsequent octaves always accumulate.
-                CellularNoise3D(xCoords, yCoords, zCoords, centerDistOutput, edgeDistOutput, new NoiseSettings(xFreq, yFreq, zFreq, amplitude, amplitude2, settings.Seed, accumulate));
+                CellularNoise3D(xCoords, yCoords, zCoords, centerDistOutput, edgeDistOutput, new NoiseSettings(xFreq, yFreq, zFreq, amplitude, amplitude2, seed, accumulate));
                 accumulate = true;
+                seed++;
                 xFreq *= lacunarity;
                 yFreq *= lacunarity;
                 zFreq *= lacunarity;

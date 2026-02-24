@@ -123,7 +123,11 @@ namespace NoiseDotNet
             // this will be auto-vectorized by Burst.
             for (int i = 0; i < length; ++i)
             {
-                output[i] = GradientNoise2DVector(xCoords[i] * settings.XFrequency, yCoords[i] * settings.YFrequency, settings.Seed) * settings.Amplitude;
+                float value = GradientNoise2DVector(xCoords[i] * settings.XFrequency, yCoords[i] * settings.YFrequency, settings.Seed) * settings.Amplitude;
+                if (settings.Accumulate)
+                    output[i] += value;
+                else
+                    output[i] = value;
             }
         }
 #endif
@@ -175,7 +179,11 @@ namespace NoiseDotNet
             // this will be auto-vectorized by Burst.
             for (int i = 0; i < length; ++i)
             {
-                output[i] = GradientNoise3DVector(xCoords[i] * settings.XFrequency, yCoords[i] * settings.YFrequency, zCoords[i] * settings.ZFrequency, settings.Seed) * settings.Amplitude;
+                float value = GradientNoise3DVector(xCoords[i] * settings.XFrequency, yCoords[i] * settings.YFrequency, zCoords[i] * settings.ZFrequency, settings.Seed) * settings.Amplitude;
+                if (settings.Accumulate)
+                    output[i] += value;
+                else
+                    output[i] = value;
             }
         }
 #endif
@@ -227,8 +235,18 @@ namespace NoiseDotNet
             for (int i = 0; i < length; ++i)
             {
                 (float centerDist, float edgeDist) = CellularNoise2DVector(xCoords[i] * settings.XFrequency, yCoords[i] * settings.YFrequency, settings.Seed);
-                centerDistOutput[i] = centerDist * settings.Amplitude;
-                edgeDistOutput[i] = edgeDist * settings.Amplitude2;
+                float centerValue = centerDist * settings.Amplitude;
+                float edgeValue = edgeDist * settings.Amplitude2;
+                if (settings.Accumulate)
+                {
+                    centerDistOutput[i] += centerValue;
+                    edgeDistOutput[i] += edgeValue;
+                }
+                else
+                {
+                    centerDistOutput[i] = centerValue;
+                    edgeDistOutput[i] = edgeValue;
+                }
             }
         }
 #endif
@@ -259,12 +277,7 @@ namespace NoiseDotNet
         /// <param name="zCoords">The z-coordinates of the sample points.</param>
         /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
         /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
-        /// <param name="xFreq">x-coordinates are multiplied by this number before being used.</param>
-        /// <param name="yFreq">y-coordinates are multiplied by this number before being used.</param>
-        /// <param name="zFreq">z-coordinates are multiplied by this number before being used.</param>
-        /// <param name="centerDistAmplitude">Center distance outputs are multiplied by this number before being written into the output buffer.</param>
-        /// <param name="edgeDistAmplitude">Edge distance outputs are multiplied by this number before being written into the output buffer.</param>
-        /// <param name="seed">The seed for the noise function.</param>
+        /// <param name="settings">The settings for the noise function.</param>
         public static void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
             // RunJob handles input validation
@@ -288,8 +301,18 @@ namespace NoiseDotNet
             for (int i = 0; i < length; ++i)
             {
                 (float centerDist, float edgeDist) = CellularNoise3DVector(xCoords[i] * settings.XFrequency, yCoords[i] * settings.YFrequency, zCoords[i] * settings.ZFrequency, settings.Seed);
-                centerDistOutput[i] = centerDist * settings.Amplitude;
-                edgeDistOutput[i] = edgeDist * settings.Amplitude2;
+                float centerValue = centerDist * settings.Amplitude;
+                float edgeValue = edgeDist * settings.Amplitude2;
+                if (settings.Accumulate)
+                {
+                    centerDistOutput[i] += centerValue;
+                    edgeDistOutput[i] += edgeValue;
+                }
+                else
+                {
+                    centerDistOutput[i] = centerValue;
+                    edgeDistOutput[i] = edgeValue;
+                }
             }
         }
 #endif
