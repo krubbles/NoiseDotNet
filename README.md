@@ -5,18 +5,24 @@ NoiseDotNet is a coherent noise library written in C#. It is
 - Lightweight (single file you can drop into your project)
 - Compatible with both CoreCLR and Unity
 
-It supports 4 noise functions:
-- GradientNoise2D 
-- GradientNoise3D
-- CellularNoise2D
-- CellularNoise3D
+It supports 4 basic noise functions:
+- Noise.GradientNoise2D 
+- Noise.GradientNoise3D
+- Noise.CellularNoise2D
+- Noise.CellularNoise3D
+
+And it supports 4 fractal (fBM) variants:
+- Noise.GradientNoise2D 
+- Noise.GradientNoise3D
+- Noise.CellularNoise2D
+- Noise.CellularNoise3D
 
 By default `GradientNoise2D` and `GradientNoise3D` calls use the [Quadratic noise algorithm](https://milesoetzel.substack.com/p/introducing-quadratic-noise-a-better), which is a modified version of Perlin noise with improved quality. You can swap it to use Perlin noise by removing the `#define QUADRATIC` statement at the top of the NoiseImpls.cs file. 
 
 ## Preformance
 Here are some preformance charts for NoiseDotNet, with FastNoise2 included as a baseline. Preformance is measured in nanoseconds per sample. 
 
-Profiled on a Ryzen 9 6900HS, AVX2 compadibility level, Windows 11.
+Profiled on a Ryzen 9 6900HS, AVX2 compadibility level, Windows 11. .NET 9.
 
 |                        | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
 | :--------------------- | --------------------: | ------------------: | -----------------: |
@@ -27,7 +33,7 @@ Profiled on a Ryzen 9 6900HS, AVX2 compadibility level, Windows 11.
 | Cellular2D             | 2.67ns                | 2.13ns              | 7.29ns             |
 | Cellular3D             | 16.3ns                | 9.32ns              | 22.7ns             |
 
-Profiled on an M4 Macbook Air. Will update with Unity results shortly. 
+Profiled on an M4 Macbook Air. .NET 10.
 
 |                        | NoiseDotNet (CoreCLR) | NoiseDotNet (Unity) | FastNoise2 (Clang) |
 | :--------------------- | --------------------: | ------------------: | -----------------: |
