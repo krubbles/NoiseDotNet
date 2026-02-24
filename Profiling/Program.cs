@@ -4,6 +4,7 @@ using BenchmarkDotNet.Attributes;
 
 BenchmarkRunner.Run<Benchmark>();
 
+[MemoryDiagnoser]
 public class Benchmark
 {
     float[] xArray = [], yArray = [], zArray = [];
@@ -30,10 +31,16 @@ public class Benchmark
     }
 
 
-    [Benchmark(OperationsPerInvoke = 224 * 224)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = 224 * 224)]
     public void GradientNoise2D()
     {
         Noise.GradientNoise2D(xArray, yArray, result, new(xFreq: 0.1f, yFreq: 0.1f, seed: 1));
+    }
+
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
+    public void GradientNoise2DGeneric()
+    {
+        Noise.GradientNoise2DGeneric(xArray, yArray, result, new(xFreq: 0.1f, yFreq: 0.1f, seed: 1));
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
@@ -43,14 +50,32 @@ public class Benchmark
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
+    public void GradientNoise3DGeneric()
+    {
+        Noise.GradientNoise3DGeneric(xArray, yArray, zArray, result, new(xFreq: 0.1f, yFreq: 0.1f, zFreq: 0.1f, seed: 1));
+    }
+
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void CellularNoise2D()
     {
         Noise.CellularNoise2D(xArray, yArray, result, result2, new(xFreq: 0.1f, yFreq: 0.1f, seed: 1));
     }
 
     [Benchmark(OperationsPerInvoke = 224 * 224)]
+    public void CellularNoise2DGeneric()
+    {
+        Noise.CellularNoise2DGeneric(xArray, yArray, result, result2, new(xFreq: 0.1f, yFreq: 0.1f, seed: 1));
+    }
+
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
     public void CellularNoise3D()
     {
         Noise.CellularNoise3D(xArray, yArray, zArray, result, result2, new(xFreq: 0.1f, yFreq: 0.1f, zFreq: 0.1f, seed: 1));
+    }
+
+    [Benchmark(OperationsPerInvoke = 224 * 224)]
+    public void CellularNoise3DGeneric()
+    {
+        Noise.CellularNoise3DGeneric(xArray, yArray, zArray, result, result2, new(xFreq: 0.1f, yFreq: 0.1f, zFreq: 0.1f, seed: 1));
     }
 }
