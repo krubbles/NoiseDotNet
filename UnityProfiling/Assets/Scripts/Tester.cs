@@ -2,13 +2,13 @@ using UnityEngine;
 
 public class Tester : MonoBehaviour
 {
-    const int SampleSize = 128;
+    const int SampleSize = 256;
     const int SampleCount = SampleSize * SampleSize;
-    const float LowestOctaveUnitsPerPixel = 0.05f;
+    const float LowestOctaveUnitsPerPixel = 0.002f;
 
     [SerializeField] Texture2D atlasTexture;
     [SerializeField] int seed = 12345;
-    [SerializeField] int octaves = 5;
+    [SerializeField] int octaves = 1;
     [SerializeField] float persistence = 0.5f;
     [SerializeField] float lacunarity = 2.0f;
 
