@@ -294,6 +294,7 @@ namespace NoiseDotNet
         }
 #endif
 
+#if CORECLR
         public static void EvaluateNoiseFunction<TNoise>(
             ReadOnlySpan<float> xCoords, 
             ReadOnlySpan<float> yCoords, 
@@ -400,5 +401,6 @@ namespace NoiseDotNet
                 }
             }
         }
+#endif
     }
 }
