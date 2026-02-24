@@ -1,3 +1,5 @@
+using System;
+
 namespace NoiseDotNet
 {
     public static partial class Noise
@@ -10,11 +12,9 @@ namespace NoiseDotNet
         /// <param name="output">The output buffer evaluations are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
         /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
-        public static void GradientNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> output, NoiseSettings settings, in FractalSettings fractalSettings)
+        public static void GradientNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> output, NoiseSettings settings, FractalSettings fractalSettings)
         {
             (int octaves, float persistence, float lacunarity) = fractalSettings;
-            if (octaves <= 0)
-                return;
 
             float xFreq = settings.XFrequency;
             float yFreq = settings.YFrequency;
@@ -41,11 +41,9 @@ namespace NoiseDotNet
         /// <param name="output">The output buffer evaluations are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
         /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
-        public static void GradientNoise3DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, NoiseSettings settings, in FractalSettings fractalSettings)
+        public static void GradientNoise3DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, NoiseSettings settings, FractalSettings fractalSettings)
         {
             (int octaves, float persistence, float lacunarity) = fractalSettings;
-            if (octaves <= 0)
-                return;
 
             float xFreq = settings.XFrequency;
             float yFreq = settings.YFrequency;
@@ -74,11 +72,9 @@ namespace NoiseDotNet
         /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
         /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
-        public static void CellularNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, NoiseSettings settings, in FractalSettings fractalSettings)
+        public static void CellularNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, NoiseSettings settings, FractalSettings fractalSettings)
         {
             (int octaves, float persistence, float lacunarity) = fractalSettings;
-            if (octaves <= 0)
-                return;
 
             float xFreq = settings.XFrequency;
             float yFreq = settings.YFrequency;
@@ -108,12 +104,10 @@ namespace NoiseDotNet
         /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
         /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
-        public static void CellularNoise3DFractal(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, NoiseSettings settings, in FractalSettings fractalSettings)
+        public static void CellularNoise3DFractal(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, NoiseSettings settings, FractalSettings fractalSettings)
         {
             (int octaves, float persistence, float lacunarity) = fractalSettings;
-            if (octaves <= 0)
-                return;
-
+            
             float xFreq = settings.XFrequency;
             float yFreq = settings.YFrequency;
             float zFreq = settings.ZFrequency;
