@@ -9,11 +9,10 @@ namespace NoiseDotNet
         /// <param name="yCoords">The y-coordinates of the sample points.</param>
         /// <param name="output">The output buffer evaluations are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
-        /// <param name="octaves">The number of octaves to evaluate.</param>
-        /// <param name="persistence">Amplitude multiplier applied after each octave.</param>
-        /// <param name="lacunarity">Frequency multiplier applied after each octave.</param>
-        public static void GradientNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> output, in NoiseSettings settings, int octaves, float persistence = 0.5f, float lacunarity = 2f)
+        /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
+        public static void GradientNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> output, NoiseSettings settings, in FractalSettings fractalSettings)
         {
+            (int octaves, float persistence, float lacunarity) = fractalSettings;
             if (octaves <= 0)
                 return;
 
@@ -41,11 +40,10 @@ namespace NoiseDotNet
         /// <param name="zCoords">The z-coordinates of the sample points.</param>
         /// <param name="output">The output buffer evaluations are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
-        /// <param name="octaves">The number of octaves to evaluate.</param>
-        /// <param name="persistence">Amplitude multiplier applied after each octave.</param>
-        /// <param name="lacunarity">Frequency multiplier applied after each octave.</param>
-        public static void GradientNoise3DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, in NoiseSettings settings, int octaves, float persistence = 0.5f, float lacunarity = 2f)
+        /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
+        public static void GradientNoise3DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, NoiseSettings settings, in FractalSettings fractalSettings)
         {
+            (int octaves, float persistence, float lacunarity) = fractalSettings;
             if (octaves <= 0)
                 return;
 
@@ -75,11 +73,10 @@ namespace NoiseDotNet
         /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
         /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
-        /// <param name="octaves">The number of octaves to evaluate.</param>
-        /// <param name="persistence">Amplitude multiplier applied after each octave.</param>
-        /// <param name="lacunarity">Frequency multiplier applied after each octave.</param>
-        public static void CellularNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings, int octaves, float persistence = 0.5f, float lacunarity = 2f)
+        /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
+        public static void CellularNoise2DFractal(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, NoiseSettings settings, in FractalSettings fractalSettings)
         {
+            (int octaves, float persistence, float lacunarity) = fractalSettings;
             if (octaves <= 0)
                 return;
 
@@ -110,11 +107,10 @@ namespace NoiseDotNet
         /// <param name="centerDistOutput">The output buffer cell center distances are written into.</param>
         /// <param name="edgeDistOutput">The output buffer cell edge distances are written into.</param>
         /// <param name="settings">Settings for the noise function.</param>
-        /// <param name="octaves">The number of octaves to evaluate.</param>
-        /// <param name="persistence">Amplitude multiplier applied after each octave.</param>
-        /// <param name="lacunarity">Frequency multiplier applied after each octave.</param>
-        public static void CellularNoise3DFractal(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings, int octaves, float persistence = 0.5f, float lacunarity = 2f)
+        /// <param name="fractalSettings">Settings for fractal octave evaluation.</param>
+        public static void CellularNoise3DFractal(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, NoiseSettings settings, in FractalSettings fractalSettings)
         {
+            (int octaves, float persistence, float lacunarity) = fractalSettings;
             if (octaves <= 0)
                 return;
 
