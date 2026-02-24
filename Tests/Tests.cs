@@ -143,15 +143,15 @@ namespace Tests
                 float[] accumulatedOutputBuffer = new float[count];
                 for (int i = 0; i < count; ++i)
                     accumulatedOutputBuffer[i] = i;
-                NoiseDotNet.Noise.GradientNoise2DGeneric(xBuffer, yBuffer, accumulatedOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
+                NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, accumulatedOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
 
                 float[] referenceOutputBuffer = new float[count];
-                NoiseDotNet.Noise.GradientNoise2DGeneric(xBuffer, yBuffer, referenceOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1));
+                NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, referenceOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1));
 
                 bool accumulateWorks = true;
                 for (int i = 0; i < count; ++i)
                     accumulateWorks &= EqualEnough(accumulatedOutputBuffer[i], i + referenceOutputBuffer[i]);
-                Assert.That(accumulateWorks, "GradientNoise2DGeneric accumulate does not work correctly");
+                Assert.That(accumulateWorks, "GradientNoise2D accumulate does not work correctly");
             }
         }
 
@@ -166,7 +166,7 @@ namespace Tests
 
             count = 15;
             float[] secondOutputBufferA = new float[count], secondOutputBufferB = new float[count];
-            NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
+            NoiseDotNet.Noise.CellularNoise2D(xBuffer.AsSpan()[0..count], yBuffer.AsSpan()[0..count], secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
 
             bool bufferSizeDoesNotMatter = true;
             for (int i = 0; i < count; ++i)
@@ -178,7 +178,7 @@ namespace Tests
             count = 7;
             secondOutputBufferA = new float[count];
             secondOutputBufferB = new float[count];
-            NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
+            NoiseDotNet.Noise.CellularNoise2D(xBuffer.AsSpan()[0..count], yBuffer.AsSpan()[0..count], secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
 
             for (int i = 0; i < count; ++i)
             {
@@ -241,9 +241,9 @@ namespace Tests
                 }
 
                 float[] referenceOutputBufferA = new float[count], referenceOutputBufferB = new float[count];
-                NoiseDotNet.Noise.CellularNoise2DGeneric(xBuffer, yBuffer, referenceOutputBufferA, referenceOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1));
+                NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, referenceOutputBufferA, referenceOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1));
 
-                NoiseDotNet.Noise.CellularNoise2DGeneric(xBuffer, yBuffer, accumulatedOutputBufferA, accumulatedOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
+                NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, accumulatedOutputBufferA, accumulatedOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
 
                 bool accumulateWorks = true;
                 for (int i = 0; i < count; ++i)
@@ -251,7 +251,7 @@ namespace Tests
                     accumulateWorks &= EqualEnough(accumulatedOutputBufferA[i], i + referenceOutputBufferA[i]);
                     accumulateWorks &= EqualEnough(accumulatedOutputBufferB[i], i + referenceOutputBufferB[i]);
                 }
-                Assert.That(accumulateWorks, "CellularNoise2DGeneric accumulate does not work correctly");
+                Assert.That(accumulateWorks, "CellularNoise2D accumulate does not work correctly");
             }
         }
 
@@ -326,14 +326,14 @@ namespace Tests
                     accumulatedOutputBuffer[i] = i;
 
                 float[] referenceOutputBuffer = new float[count];
-                NoiseDotNet.Noise.GradientNoise3DGeneric(xBuffer, yBuffer, zBuffer, referenceOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1));
+                NoiseDotNet.Noise.GradientNoise3D(xBuffer, yBuffer, zBuffer, referenceOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1));
 
-                NoiseDotNet.Noise.GradientNoise3DGeneric(xBuffer, yBuffer, zBuffer, accumulatedOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
+                NoiseDotNet.Noise.GradientNoise3D(xBuffer, yBuffer, zBuffer, accumulatedOutputBuffer, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
 
                 bool accumulateWorks = true;
                 for (int i = 0; i < count; ++i)
                     accumulateWorks &= EqualEnough(accumulatedOutputBuffer[i], i + referenceOutputBuffer[i]);
-                Assert.That(accumulateWorks, "GradientNoise3DGeneric accumulate does not work correctly");
+                Assert.That(accumulateWorks, "GradientNoise3D accumulate does not work correctly");
             }
         }
 
@@ -348,7 +348,7 @@ namespace Tests
 
             count = 15;
             float[] secondOutputBufferA = new float[count], secondOutputBufferB = new float[count];
-            NoiseDotNet.Noise.CellularNoise3D(xBuffer, yBuffer, zBuffer, secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, zFreq: 2.1f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
+            NoiseDotNet.Noise.CellularNoise3D(xBuffer.AsSpan()[0..count], yBuffer.AsSpan()[0..count], zBuffer.AsSpan()[0..count], secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, zFreq: 2.1f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
 
             bool bufferSizeDoesNotMatter = true;
             for (int i = 0; i < count; ++i)
@@ -360,7 +360,7 @@ namespace Tests
             count = 7;
             secondOutputBufferA = new float[count];
             secondOutputBufferB = new float[count];
-            NoiseDotNet.Noise.CellularNoise3D(xBuffer, yBuffer, zBuffer, secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, zFreq: 2.1f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
+            NoiseDotNet.Noise.CellularNoise3D(xBuffer.AsSpan()[0..count], yBuffer.AsSpan()[0..count], zBuffer.AsSpan()[0..count], secondOutputBufferA, secondOutputBufferB, new(xFreq: 1.5f, yFreq: 1.8f, zFreq: 2.1f, amplitude: 0.5f, amplitude2: 0.8f, seed: 1));
 
             for (int i = 0; i < count; ++i)
             {
@@ -424,9 +424,9 @@ namespace Tests
                 }
 
                 float[] referenceOutputBufferA = new float[count], referenceOutputBufferB = new float[count];
-                NoiseDotNet.Noise.CellularNoise3DGeneric(xBuffer, yBuffer, zBuffer, referenceOutputBufferA, referenceOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1));
+                NoiseDotNet.Noise.CellularNoise3D(xBuffer, yBuffer, zBuffer, referenceOutputBufferA, referenceOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1));
 
-                NoiseDotNet.Noise.CellularNoise3DGeneric(xBuffer, yBuffer, zBuffer, accumulatedOutputBufferA, accumulatedOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
+                NoiseDotNet.Noise.CellularNoise3D(xBuffer, yBuffer, zBuffer, accumulatedOutputBufferA, accumulatedOutputBufferB, new(xFreq: 1f / 3f, yFreq: 1f / 4f, zFreq: 1f / 5f, amplitude: 1f, amplitude2: 1f, seed: 1, accumulate: true));
 
                 bool accumulateWorks = true;
                 for (int i = 0; i < count; ++i)
@@ -434,102 +434,8 @@ namespace Tests
                     accumulateWorks &= EqualEnough(accumulatedOutputBufferA[i], i + referenceOutputBufferA[i]);
                     accumulateWorks &= EqualEnough(accumulatedOutputBufferB[i], i + referenceOutputBufferB[i]);
                 }
-                Assert.That(accumulateWorks, "CellularNoise3DGeneric accumulate does not work correctly");
+                Assert.That(accumulateWorks, "CellularNoise3D accumulate does not work correctly");
             }
-        }
-
-        [Test]
-        public void GradientNoise2DGenericEquivalence()
-        {
-            for (int count = 1; count <= 24; ++count)
-            {
-                GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out _);
-
-                NoiseDotNet.NoiseSettings settings = new(xFreq: 1.7f, yFreq: 0.6f, amplitude: 0.75f, amplitude2: 1f, seed: 123);
-
-                float[] oldOutput = new float[count];
-                float[] newOutput = new float[count];
-                NoiseDotNet.Noise.GradientNoise2D(xBuffer, yBuffer, oldOutput, settings);
-                NoiseDotNet.Noise.GradientNoise2DGeneric(xBuffer, yBuffer, newOutput, settings);
-
-                bool equivalent = true;
-                for (int i = 0; i < count; ++i)
-                    equivalent &= EqualEnough(oldOutput[i], newOutput[i]);
-                Assert.That(equivalent, $"GradientNoise2DGeneric does not match GradientNoise2D for size {count}");
-            }
-
-        }
-
-        [Test]
-        public void CellularNoise2DGenericEquivalence()
-        {
-            for (int count = 1; count <= 24; ++count)
-            {
-                GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out _);
-
-                NoiseDotNet.NoiseSettings settings = new(xFreq: 1.2f, yFreq: 0.9f, amplitude: 0.65f, amplitude2: 1.1f, seed: 321);
-
-                float[] oldA = new float[count], oldB = new float[count];
-                float[] newA = new float[count], newB = new float[count];
-                NoiseDotNet.Noise.CellularNoise2D(xBuffer, yBuffer, oldA, oldB, settings);
-                NoiseDotNet.Noise.CellularNoise2DGeneric(xBuffer, yBuffer, newA, newB, settings);
-
-                bool equivalent = true;
-                for (int i = 0; i < count; ++i)
-                {
-                    equivalent &= EqualEnough(oldA[i], newA[i]);
-                    equivalent &= EqualEnough(oldB[i], newB[i]);
-                }
-                Assert.That(equivalent, $"CellularNoise2DGeneric does not match CellularNoise2D for size {count}");
-            }
-
-        }
-
-        [Test]
-        public void GradientNoise3DGenericEquivalence()
-        {
-            for (int count = 1; count <= 24; ++count)
-            {
-                GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
-
-                NoiseDotNet.NoiseSettings settings = new(xFreq: 0.7f, yFreq: 1.9f, zFreq: 1.3f, amplitude: 0.9f, amplitude2: 1f, seed: 777);
-
-                float[] oldOutput = new float[count];
-                float[] newOutput = new float[count];
-                NoiseDotNet.Noise.GradientNoise3D(xBuffer, yBuffer, zBuffer, oldOutput, settings);
-                NoiseDotNet.Noise.GradientNoise3DGeneric(xBuffer, yBuffer, zBuffer, newOutput, settings);
-
-                bool equivalent = true;
-                for (int i = 0; i < count; ++i)
-                    equivalent &= EqualEnough(oldOutput[i], newOutput[i]);
-                Assert.That(equivalent, $"GradientNoise3DGeneric does not match GradientNoise3D for size {count}");
-            }
-
-        }
-
-        [Test]
-        public void CellularNoise3DGenericEquivalence()
-        {
-            for (int count = 1; count <= 24; ++count)
-            {
-                GenerateXYZBuffers(count, out float[] xBuffer, out float[] yBuffer, out float[] zBuffer);
-
-                NoiseDotNet.NoiseSettings settings = new(xFreq: 1.4f, yFreq: 0.85f, zFreq: 1.6f, amplitude: 1.2f, amplitude2: 0.7f, seed: 999);
-
-                float[] oldA = new float[count], oldB = new float[count];
-                float[] newA = new float[count], newB = new float[count];
-                NoiseDotNet.Noise.CellularNoise3D(xBuffer, yBuffer, zBuffer, oldA, oldB, settings);
-                NoiseDotNet.Noise.CellularNoise3DGeneric(xBuffer, yBuffer, zBuffer, newA, newB, settings);
-
-                bool equivalent = true;
-                for (int i = 0; i < count; ++i)
-                {
-                    equivalent &= EqualEnough(oldA[i], newA[i]);
-                    equivalent &= EqualEnough(oldB[i], newB[i]);
-                }
-                Assert.That(equivalent, $"CellularNoise3DGeneric does not match CellularNoise3D for size {count}");
-            }
-
         }
 
         /// <summary>
