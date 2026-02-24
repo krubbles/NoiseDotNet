@@ -37,56 +37,6 @@ namespace NoiseDotNet
     /// </summary>
     public static partial class Noise
     {
-        public readonly struct GradientNoise2DFunction : INoiseFunction
-        {
-            public int Dimensions => 2;
-            public int Outputs => 1;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
-            {
-                o1 = GradientNoise2DVector(x, y, seed);
-                o2 = default;
-            }
-        }
-
-        public readonly struct GradientNoise3DFunction : INoiseFunction
-        {
-            public int Dimensions => 3;
-            public int Outputs => 1;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
-            {
-                o1 = GradientNoise3DVector(x, y, z, seed);
-                o2 = default;
-            }
-        }
-
-        public readonly struct CellularNoise2DFunction : INoiseFunction
-        {
-            public int Dimensions => 2;
-            public int Outputs => 2;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
-            {
-                (o1, o2) = CellularNoise2DVector(x, y, seed);
-            }
-        }
-
-        public readonly struct CellularNoise3DFunction : INoiseFunction
-        {
-            public int Dimensions => 3;
-            public int Outputs => 2;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
-            {
-                (o1, o2) = CellularNoise3DVector(x, y, z, seed);
-            }
-        }
-
         // All noise function implementations must be inlined so they can be auto-vectorized by Burst. 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Float GradientNoise2DVector(Float x, Float y, Int seed)
@@ -457,6 +407,56 @@ namespace NoiseDotNet
             d2 = smallest ? d1 : d < d2 ? d : d2;
             d1 = smallest ? d : d1;
 #endif
+        }
+
+                public readonly struct GradientNoise2DFunction : INoiseFunction
+        {
+            public int Dimensions => 2;
+            public int Outputs => 1;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                o1 = GradientNoise2DVector(x, y, seed);
+                o2 = default;
+            }
+        }
+
+        public readonly struct GradientNoise3DFunction : INoiseFunction
+        {
+            public int Dimensions => 3;
+            public int Outputs => 1;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                o1 = GradientNoise3DVector(x, y, z, seed);
+                o2 = default;
+            }
+        }
+
+        public readonly struct CellularNoise2DFunction : INoiseFunction
+        {
+            public int Dimensions => 2;
+            public int Outputs => 2;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                (o1, o2) = CellularNoise2DVector(x, y, seed);
+            }
+        }
+
+        public readonly struct CellularNoise3DFunction : INoiseFunction
+        {
+            public int Dimensions => 3;
+            public int Outputs => 2;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2)
+            {
+                (o1, o2) = CellularNoise3DVector(x, y, z, seed);
+            }
         }
     }
 
