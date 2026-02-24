@@ -61,6 +61,13 @@ using System;
 
 namespace NoiseDotNet
 {
+    public interface INoiseFunction 
+    {
+        public int Dimensions { get; }
+        public int Outputs { get; }
+        public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2);
+    }
+
     /// <summary>
     /// SIMD-accelerated implementations of coherent noise functions.
     /// </summary>
@@ -502,5 +509,83 @@ namespace NoiseDotNet
         }
 #endif
 
+        public static void EvaluateNoiseFunction<TNoise>(
+            ReadOnlySpan<float> xCoords, 
+            ReadOnlySpan<float> yCoords, 
+            ReadOnlySpan<float> zCoords, 
+            Span<float> output1, 
+            Span<float> output2, 
+            in NoiseSettings settings)
+            where TNoise : struct, INoiseFunction
+        {
+            TNoise noiseFunction = default;
+
+            (float xFreq, float yFreq, float zFreq, float amp1, float amp2, int seed, bool accumulate) = settings;
+
+            Float xfVec = Util.Create(xFreq);
+            Float yfVec = Util.Create(yFreq);
+            Float zfVec = Util.Create(zFreq);
+            Float amp1Vec = Util.Create(amp1);
+            Float amp2Vec = Util.Create(amp2);
+            Int seedVec = Util.Create(seed);           
+            
+            int length = output1.Length;
+            for (int i = 0; i <= length - Float.Count; i += Float.Count)
+            {
+                Float xVec = Util.LoadUnsafe(in xCoords[i]);
+                Float yVec = Util.LoadUnsafe(in yCoords[i]);
+                Float zVec = Util.LoadUnsafe(in zCoords[i]);
+
+                noiseFunction.Evaluate(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec, out Float out1Vec, out Float out2Vec);
+                out1Vec *= amp1Vec;
+                if (noiseFunction.Outputs >= 2)
+                    out2Vec *= amp2Vec;
+                if (accumulate)
+                {
+                    Float existingCenter = Util.LoadUnsafe(ref output1[i]);
+                    Float existingEdge = Util.LoadUnsafe(ref output2[i]);
+                    out1Vec += existingCenter;
+                    out2Vec += existingEdge;
+                }
+                out1Vec.StoreUnsafe(ref output1[i]);
+                out2Vec.StoreUnsafe(ref output2[i]);
+            }
+            {
+                Float xVec = default, yVec = default, zVec = default;
+                for (int i = length - length % Float.Count; i < length; ++i)
+                {
+                    xVec = xVec.WithElement(i, xCoords[i]);
+                    if (noiseFunction.Dimensions >= 2)
+                        yVec = yVec.WithElement(i, yCoords[i]);
+                    if (noiseFunction.Dimensions >= 3)
+                        zVec = zVec.WithElement(i, zCoords[i]);
+                }
+
+                noiseFunction.Evaluate(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec, out Float out1Vec, out Float out2Vec);
+
+                out1Vec *= amp1Vec;
+                if (noiseFunction.Outputs >= 2)
+                    out2Vec *= amp2Vec;
+
+                if (settings.Accumulate) 
+                {
+                    for (int i = length - length % Float.Count; i < length; ++i)
+                    {
+                        output1[i] += out1Vec.GetElement(i);
+                        if (noiseFunction.Outputs >= 2)
+                            output2[i] += out2Vec.GetElement(i);
+                    }
+                }
+                else 
+                {
+                    for (int i = length - length % Float.Count; i < length; ++i)
+                    {
+                        output1[i] = out1Vec.GetElement(i);
+                        if (noiseFunction.Outputs >= 2)
+                            output2[i] = out2Vec.GetElement(i);
+                    }
+                }
+            }
+        }
     }
 }
