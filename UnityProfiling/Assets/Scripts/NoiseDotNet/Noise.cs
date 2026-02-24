@@ -20,6 +20,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+// GradientNoise2D() and GradientNoise3D() can either use Quadratic Noise or Perlin Noise as their underlying algorithm.
+// Quadratic noise is better quality, but Perlin Noise is around 20% faster. Quadratic noise is recommended.
+// If you would like to switch to Perlin noise, remove the #define QUADRATIC statement.
+#define QUADRATIC
+
+#if UNITY_2017_1_OR_NEWER
+#define UNITY
+#else
+#define CORECLR
+#endif
+
 // This library is written to be compatible with both Unity and CoreCLR.
 // In CoreCLR, vectorization is achieved using the System.Numerics.Vector<T> API.
 // In Unity, vectorization is achieved using Burst auto-vectorization.
@@ -27,11 +38,6 @@
 // while in Unity Int and Float simply represent int and float, since Burst will automatically preform vectorization.
 // The benefit of this approach is it involves very little platform-specific vectorized code,
 // so there is no need for multiple versions based on Fma/Avx2 support or ARM.
-#if UNITY_2017_1_OR_NEWER
-#define UNITY
-#else
-#define CORECLR
-#endif
 
 #if CORECLR
 using System.Numerics;
@@ -55,6 +61,13 @@ using System;
 
 namespace NoiseDotNet
 {
+    public interface INoiseFunction 
+    {
+        public int Dimensions { get; }
+        public int Outputs { get; }
+        public void Evaluate(Float x, Float y, Float z, Int seed, out Float o1, out Float o2);
+    }
+
     /// <summary>
     /// SIMD-accelerated implementations of coherent noise functions.
     /// </summary>
@@ -77,44 +90,7 @@ namespace NoiseDotNet
         /// <param name="settings">The settings for the noise function.</param>
         public static void GradientNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> output, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, _, float amplitude, _, int seed) = settings;
-
-            Int seedVec = Util.Create(seed);
-            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), ampVec = Util.Create(amplitude);
-            int length = output.Length;
-            if (length < Float.Count)
-            {
-                // if the buffer doesn't have enough elements to fit into a vector,
-                // we can't use the load and store instructions, so we have to build the vector element by element instead.
-                Float xVec = default, yVec = default;
-                for (int i = 0; i < length; ++i)
-                {
-                    xVec = xVec.WithElement(i, xCoords[i]);
-                    yVec = yVec.WithElement(i, yCoords[i]);
-                }
-                Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * ampVec;
-                for (int i = 0; i < length; ++i)
-                {
-                    output[i] = result.GetElement(i);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < length - Float.Count; i += Float.Count)
-                {
-                    Float xVec = Util.LoadUnsafe(ref xCoords[i]);
-                    Float yVec = Util.LoadUnsafe(ref yCoords[i]);
-                    Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * ampVec;
-                    result.StoreUnsafe(ref output[i]);
-                }
-                {
-                    int i = length - Float.Count;
-                    Float xVec = Util.LoadUnsafe(ref xCoords[i]);
-                    Float yVec = Util.LoadUnsafe(ref yCoords[i]);
-                    Float result = GradientNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec) * ampVec;
-                    result.StoreUnsafe(ref output[i]);
-                }
-            }
+            EvaluateNoiseFunction<GradientNoise2DFunction>(xCoords, yCoords, xCoords, output, output, settings);
         }
 #else
 
@@ -165,47 +141,7 @@ namespace NoiseDotNet
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void GradientNoise3D(Span<float> xCoords, Span<float> yCoords, Span<float> zCoords, Span<float> output, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, float zFreq, float amplitude, _, int seed) = settings;
-
-            Int seedVec = Util.Create(seed);
-            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq), ampVec = Util.Create(amplitude);
-            int length = output.Length;
-            if (length < Float.Count)
-            {
-                // if the buffer doesn't have enough elements to fit into a vector,
-                // we can't use the load and store instructions, so we have to build the vector element by element instead.
-                Float xVec = default, yVec = default, zVec = default;
-                for (int i = 0; i < length; ++i)
-                {
-                    xVec = xVec.WithElement(i, xCoords[i]);
-                    yVec = yVec.WithElement(i, yCoords[i]);
-                    zVec = zVec.WithElement(i, zCoords[i]);
-                }
-                Float result = GradientNoise3DVector(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec) * ampVec;
-                for (int i = 0; i < length; ++i)
-                {
-                    output[i] = result.GetElement(i);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < length - Float.Count; i += Float.Count)
-                {
-                    Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
-                    Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
-                    Float zVec = Util.LoadUnsafe(ref zCoords[i]) * zfVec;
-                    Float result = GradientNoise3DVector(xVec, yVec, zVec, seedVec) * ampVec;
-                    result.StoreUnsafe(ref output[i]);
-                }
-                {
-                    int i = length - Float.Count;
-                    Float xVec = Util.LoadUnsafe(ref xCoords[i]) * xfVec;
-                    Float yVec = Util.LoadUnsafe(ref yCoords[i]) * yfVec;
-                    Float zVec = Util.LoadUnsafe(ref zCoords[i]) * zfVec;
-                    Float result = GradientNoise3DVector(xVec, yVec, zVec, seedVec) * ampVec;
-                    result.StoreUnsafe(ref output[i]);
-                }
-            }
+            EvaluateNoiseFunction<GradientNoise3DFunction>(xCoords, yCoords, zCoords, output, output, settings);
         }
 #else
         /// <summary>
@@ -256,54 +192,7 @@ namespace NoiseDotNet
         /// <param name="settings">The settings for the noise function.</param>
         public static void CellularNoise2D(Span<float> xCoords, Span<float> yCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, _, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
-
-            Int seedVec = Util.Create(seed);
-            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq);
-            Float centerAmpVec = Util.Create(centerDistAmplitude), edgeAmpVec = Util.Create(edgeDistAmplitude);
-            int length = centerDistOutput.Length;
-            if (length < Float.Count)
-            {
-                // if the buffer doesn't have enough elements to fit into a vector,
-                // we can't use the load and store instructions, so we have to build the vector element by element instead.
-                Float xVec = default, yVec = default;
-                for (int i = 0; i < length; ++i)
-                {
-                    xVec = xVec.WithElement(i, xCoords[i]);
-                    yVec = yVec.WithElement(i, yCoords[i]);
-                }
-                (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec);
-                centerDist *= centerAmpVec;
-                edgeDist *= edgeAmpVec;
-                for (int i = 0; i < length; ++i)
-                {
-                    centerDistOutput[i] = centerDist.GetElement(i);
-                    edgeDistOutput[i] = edgeDist.GetElement(i);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < length - Float.Count; i += Float.Count)
-                {
-                    Float xVec = Util.LoadUnsafe(ref xCoords[i]);
-                    Float yVec = Util.LoadUnsafe(ref yCoords[i]);
-                    (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec);
-                    centerDist *= centerAmpVec;
-                    edgeDist *= edgeAmpVec;
-                    centerDist.StoreUnsafe(ref centerDistOutput[i]);
-                    edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
-                }
-                {
-                    int i = length - Float.Count;
-                    Float xVec = Util.LoadUnsafe(ref xCoords[i]);
-                    Float yVec = Util.LoadUnsafe(ref yCoords[i]);
-                    (Float centerDist, Float edgeDist) = CellularNoise2DVector(xVec * xfVec, yVec * yfVec, seedVec);
-                    centerDist *= centerAmpVec;
-                    edgeDist *= edgeAmpVec;
-                    centerDist.StoreUnsafe(ref centerDistOutput[i]);
-                    edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
-                }
-            }
+            EvaluateNoiseFunction<CellularNoise2DFunction>(xCoords, yCoords, xCoords, centerDistOutput, edgeDistOutput, settings);
         }
 #else
         /// <summary>
@@ -357,60 +246,7 @@ namespace NoiseDotNet
         /// <param name="settings">The settings for the noise function.</param>
         public static void CellularNoise3D(ReadOnlySpan<float> xCoords, ReadOnlySpan<float> yCoords, ReadOnlySpan<float> zCoords, Span<float> centerDistOutput, Span<float> edgeDistOutput, in NoiseSettings settings)
         {
-            (float xFreq, float yFreq, float zFreq, float centerDistAmplitude, float edgeDistAmplitude, int seed) = settings;
-
-            Int seedVec = Util.Create(seed);
-            Float xfVec = Util.Create(xFreq), yfVec = Util.Create(yFreq), zfVec = Util.Create(zFreq);
-            Float centerAmpVec = Util.Create(centerDistAmplitude), edgeAmpVec = Util.Create(edgeDistAmplitude);
-            int length = centerDistOutput.Length;
-            if (length < Float.Count)
-            {
-                // if the buffer doesn't have enough elements to fit into a vector,
-                // we can't use the load and store instructions, so we have to build the vector element by element instead.
-                Float xVec = default, yVec = default, zVec = default;
-                for (int i = 0; i < length; ++i)
-                {
-                    xVec = xVec.WithElement(i, xCoords[i]);
-                    yVec = yVec.WithElement(i, yCoords[i]);
-                    zVec = zVec.WithElement(i, zCoords[i]);
-                }
-                (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec);
-                centerDist *= centerAmpVec;
-                edgeDist *= edgeAmpVec;
-                for (int i = 0; i < length; ++i)
-                {
-                    centerDistOutput[i] = centerDist.GetElement(i);
-                    edgeDistOutput[i] = edgeDist.GetElement(i);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < length - Float.Count; i += Float.Count)
-                {
-                    Float xVec = Util.LoadUnsafe(in xCoords[i]);
-                    Float yVec = Util.LoadUnsafe(in yCoords[i]);
-                    Float zVec = Util.LoadUnsafe(in zCoords[i]);
-
-                    (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec);
-                    centerDist *= centerAmpVec;
-                    edgeDist *= edgeAmpVec;
-                    centerDist.StoreUnsafe(ref centerDistOutput[i]);
-                    edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
-                }
-                {
-                    int i = length - Float.Count;
-
-                    Float xVec = Util.LoadUnsafe(in xCoords[i]);
-                    Float yVec = Util.LoadUnsafe(in yCoords[i]);
-                    Float zVec = Util.LoadUnsafe(in zCoords[i]);
-
-                    (Float centerDist, Float edgeDist) = CellularNoise3DVector(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec);
-                    centerDist *= centerAmpVec;
-                    edgeDist *= edgeAmpVec;
-                    centerDist.StoreUnsafe(ref centerDistOutput[i]);
-                    edgeDist.StoreUnsafe(ref edgeDistOutput[i]);
-                }
-            }
+            EvaluateNoiseFunction<CellularNoise3DFunction>(xCoords, yCoords, zCoords, centerDistOutput, edgeDistOutput, settings);
         }
 #else
         /// <summary>
@@ -458,5 +294,111 @@ namespace NoiseDotNet
         }
 #endif
 
+        public static void EvaluateNoiseFunction<TNoise>(
+            ReadOnlySpan<float> xCoords, 
+            ReadOnlySpan<float> yCoords, 
+            ReadOnlySpan<float> zCoords, 
+            Span<float> output1, 
+            Span<float> output2, 
+            in NoiseSettings settings)
+            where TNoise : struct, INoiseFunction
+        {
+            TNoise noiseFunction = default;
+
+            int length = output1.Length;
+            if (length == 0)
+                return;
+
+#if DEBUG
+            if (xCoords.Length != length)
+                throw new ArgumentException($"Expected x buffer length {xCoords.Length} to equal output buffer length {length}");
+
+            if (noiseFunction.Dimensions >= 2 && yCoords.Length != length)
+                throw new ArgumentException($"Expected y buffer length {yCoords.Length} to equal output buffer length {length}");
+
+            if (noiseFunction.Dimensions >= 3 && zCoords.Length != length)
+                throw new ArgumentException($"Expected z buffer length {zCoords.Length} to equal output buffer length {length}");
+
+            if (noiseFunction.Outputs >= 2 && output2.Length != length)
+                throw new ArgumentException($"Expected secondary output buffer length {output2.Length} to equal output buffer length {length}");
+#endif
+
+            (float xFreq, float yFreq, float zFreq, float amp1, float amp2, int seed, bool accumulate) = settings;
+
+            Float xfVec = Util.Create(xFreq);
+            Float yfVec = Util.Create(yFreq);
+            Float zfVec = Util.Create(zFreq);
+            Float amp1Vec = Util.Create(amp1);
+            Float amp2Vec = Util.Create(amp2);
+            Int seedVec = Util.Create(seed);           
+
+            int fullVectorLength = length - length % Float.Count;
+            for (int i = 0; i < fullVectorLength; i += Float.Count)
+            {
+                Float xVec = Util.LoadUnsafe(in xCoords[i]) * xfVec;
+                Float yVec = noiseFunction.Dimensions >= 2 ? Util.LoadUnsafe(in yCoords[i]) * yfVec : default;
+                Float zVec = noiseFunction.Dimensions >= 3 ? Util.LoadUnsafe(in zCoords[i]) * zfVec : default;
+
+                noiseFunction.Evaluate(xVec, yVec, zVec, seedVec, out Float out1Vec, out Float out2Vec);
+                out1Vec *= amp1Vec;
+                if (noiseFunction.Outputs >= 2)
+                    out2Vec *= amp2Vec;
+                if (accumulate)
+                {
+                    Float out1Current = Util.LoadUnsafe(ref output1[i]);
+                    out1Vec += out1Current;
+                    if (noiseFunction.Outputs >= 2)
+                    {
+                        Float out2Current = Util.LoadUnsafe(ref output2[i]);
+                        out2Vec += out2Current;
+                    }
+                }
+                out1Vec.StoreUnsafe(ref output1[i]);
+                if (noiseFunction.Outputs >= 2)
+                    out2Vec.StoreUnsafe(ref output2[i]);
+            }
+
+            int remainder = length - fullVectorLength;
+            if (remainder > 0)
+            {
+                Float xVec = default, yVec = default, zVec = default;
+                for (int i = 0; i < remainder; ++i)
+                {
+                    int sourceIndex = fullVectorLength + i;
+                    xVec = xVec.WithElement(i, xCoords[sourceIndex]);
+                    if (noiseFunction.Dimensions >= 2)
+                        yVec = yVec.WithElement(i, yCoords[sourceIndex]);
+                    if (noiseFunction.Dimensions >= 3)
+                        zVec = zVec.WithElement(i, zCoords[sourceIndex]);
+                }
+
+                noiseFunction.Evaluate(xVec * xfVec, yVec * yfVec, zVec * zfVec, seedVec, out Float out1Vec, out Float out2Vec);
+
+                out1Vec *= amp1Vec;
+                if (noiseFunction.Outputs >= 2)
+                    out2Vec *= amp2Vec;
+
+                if (accumulate)
+                {
+                    for (int i = 0; i < remainder; ++i)
+                    {
+                        int targetIndex = fullVectorLength + i;
+                        output1[targetIndex] += out1Vec.GetElement(i);
+                        if (noiseFunction.Outputs >= 2)
+                            output2[targetIndex] += out2Vec.GetElement(i);
+                    }
+                }
+                else 
+                {
+                    for (int i = 0; i < remainder; ++i)
+                    {
+                        int targetIndex = fullVectorLength + i;
+                        output1[targetIndex] = out1Vec.GetElement(i);
+                        if (noiseFunction.Outputs >= 2)
+                            output2[targetIndex] = out2Vec.GetElement(i);
+                    }
+                }
+            }
+        }
     }
 }
