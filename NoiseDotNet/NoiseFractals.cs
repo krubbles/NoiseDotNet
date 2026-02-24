@@ -1,3 +1,5 @@
+using System;
+
 namespace NoiseDotNet
 {
     public static partial class Noise
