@@ -5,6 +5,8 @@ using Debug = UnityEngine.Debug;
 
 public class NoiseProfiler : MonoBehaviour
 {
+    public bool RunProfiling;
+
     public const float ProfilingTimeMS = 10000;
     public const int Size = 224;
     public const int SampleCount = Size * Size;
@@ -18,8 +20,11 @@ public class NoiseProfiler : MonoBehaviour
 
     void Start()
     {
-        InitCoordinateBuffers();
-        RunAllProfiles();
+        if (RunProfiling)
+        {
+            InitCoordinateBuffers();
+            RunAllProfiles();
+        }
     }
 
     void RunAllProfiles()
