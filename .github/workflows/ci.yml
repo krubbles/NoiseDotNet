@@ -2,6 +2,11 @@ name: Publish NuGet (GitHub Release)
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to pack'
+        required: true
 jobs:
   build:
     timeout-minutes: 15
@@ -27,9 +32,9 @@ jobs:
     - name: Test
       run: dotnet test --configuration Release --no-build
     - name: Pack
-      run: dotnet pack -c Release --no-build -p:PackageVersion=${{ steps.ver.outputs.version }} --output ./artifacts
+      run: dotnet pack -c Release --no-build -p:PackageVersion=${{ steps.ver.outputs.version || github.event.inputs.version }} --output ./artifacts
     - name: Push
       run: dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --api-key ${NUGET_KEY}
-      if: ${{ GITHUB_REF == 'refs/heads/main' }}
+      if: github.ref_name == 'main'
       env:
         NUGET_KEY: ${{ secrets.NUGET_KEY }}
