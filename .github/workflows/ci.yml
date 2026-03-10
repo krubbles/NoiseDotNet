@@ -1,40 +1,52 @@
 name: Publish NuGet (GitHub Release)
+
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to pack'
+        description: 'Version to pack (ex. 1.0.0)'
         required: true
+
 jobs:
   build:
+    runs-on: ubuntu-latest
     timeout-minutes: 15
+
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '10.0.x'
-        include-prerelease: true
-    - name: Compute version from tag
-      id: ver
-      shell: bash
-      run: |
-        TAG="${GITHUB_REF_NAME}"          
-        VERSION="${TAG#v}"                
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Build
-      run: dotnet build --configuration Release
-    - name: Test
-      run: dotnet test --configuration Release --no-build
-    - name: Pack
-      run: dotnet pack -c Release --no-build -p:PackageVersion=${{ steps.ver.outputs.version || github.event.inputs.version }} --output ./artifacts
-    - name: Push
-      run: dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --api-key ${NUGET_KEY}
-      if: github.ref_name == 'main'
-      env:
-        NUGET_KEY: ${{ secrets.NUGET_KEY }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="$GITHUB_REF_NAME"     
+            VERSION="${TAG#v}"         
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack -c Release --no-build -p:PackageVersion=${{ steps.ver.outputs.version }} --output ./artifacts
+
+      - name: Push to NuGet
+        if: github.event_name == 'release'
+        env:
+          NUGET_KEY: ${{ secrets.NUGET_KEY }}
+        run: dotnet nuget push "./artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "$NUGET_KEY" --skip-duplicate
