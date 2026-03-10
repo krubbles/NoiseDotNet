@@ -15,14 +15,6 @@
 		<PackageProjectUrl>https://github.com/krubbles/NoiseDotNet</PackageProjectUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Copyright>Copyright (c) Miles Oetzel</Copyright>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageIcon></PackageIcon>
 		<IncludeSource>true</IncludeSource>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<!--<None Include="$(SolutionDir)\$(PackageIcon)" Pack="true" PackagePath="\"/>-->
-		<None Include="$(SolutionDir)\$(PackageReadmeFile)" Pack="true" PackagePath="\"/>
-	</ItemGroup>
-
 </Project>
