@@ -1,10 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<PropertyGroup Label="Package Properties">
+		<Title>Noise .NET</Title>
+		<Description>A performant coherent noise library</Description>
+		<PackageVersion>1.0.0</PackageVersion>
+		<PackageTags>noise</PackageTags>
+		<PackageProjectUrl>https://github.com/krubbles/NoiseDotNet</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Copyright>Copyright (c) Miles Oetzel 2026</Copyright>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon></PackageIcon>
+		<IncludeSource>true</IncludeSource>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!--<None Include="$(SolutionDir)\$(PackageIcon)" Pack="true" PackagePath="\"/>-->
+		<None Include="$(SolutionDir)\$(PackageReadmeFile)" Pack="true" PackagePath="\"/>
+	</ItemGroup>
 
 </Project>
