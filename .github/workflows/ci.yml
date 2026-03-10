@@ -46,7 +46,6 @@ jobs:
         run: dotnet pack -c Release --no-build -p:PackageVersion=${{ steps.ver.outputs.version }} --output ./artifacts
 
       - name: Push to NuGet
-        if: github.event_name == 'release'
         env:
           NUGET_KEY: ${{ secrets.NUGET_KEY }}
         run: dotnet nuget push "./artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "$NUGET_KEY" --skip-duplicate
