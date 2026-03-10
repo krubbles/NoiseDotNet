@@ -9,12 +9,12 @@
 
 	<PropertyGroup Label="Package Properties">
 		<Title>Noise .NET</Title>
-		<Description>A performant coherent noise library</Description>
+		<Description>An optimized coherent noise library for Perlin and cellular noise.</Description>
 		<PackageVersion>1.0.0</PackageVersion>
 		<PackageTags>noise</PackageTags>
 		<PackageProjectUrl>https://github.com/krubbles/NoiseDotNet</PackageProjectUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Copyright>Copyright (c) Miles Oetzel 2026</Copyright>
+		<Copyright>Copyright (c) Miles Oetzel</Copyright>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageIcon></PackageIcon>
 		<IncludeSource>true</IncludeSource>

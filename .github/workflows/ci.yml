@@ -1,14 +1,25 @@
+name: Publish NuGet (GitHub Release)
 on:
-  push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
+  release:
+    types: [published]
 jobs:
   build:
     timeout-minutes: 15
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+        include-prerelease: true
+    - name: Compute version from tag
+      id: ver
+      shell: bash
+      run: |
+        TAG="${GITHUB_REF_NAME}"          
+        VERSION="${TAG#v}"                
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
     - name: Checkout
       uses: actions/checkout@v2
     - name: Build
@@ -16,9 +27,9 @@ jobs:
     - name: Test
       run: dotnet test --configuration Release --no-build
     - name: Pack
-      run: dotnet pack --configuration Release --no-build --output .
+      run: dotnet pack -c Release --no-build -p:PackageVersion=${{ steps.ver.outputs.version }} --output ./artifacts
     - name: Push
-      run: dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --api-key ${NUGET_TOKEN}
+      run: dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --api-key ${NUGET_KEY}
       if: ${{ GITHUB_REF == 'refs/heads/main' }}
       env:
-        NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+        NUGET_KEY: ${{ secrets.NUGET_KEY }}
