@@ -17,7 +17,7 @@ And it supports 4 fractal (fBM) variants:
 - Noise.CellularNoise2D
 - Noise.CellularNoise3D
 
-By default `GradientNoise2D` and `GradientNoise3D` calls use the [Quadratic noise algorithm](https://milesoetzel.substack.com/p/introducing-quadratic-noise-a-better), which is a modified version of Perlin noise with improved quality. You can swap it to use Perlin noise by removing the `#define QUADRATIC` statement at the top of the NoiseImpls.cs file. 
+You add a `#define QUADRATIC` statement to the top of the NoiseImpls.cs file. to use the [Quadratic noise algorithm](https://milesoetzel.substack.com/p/introducing-quadratic-noise-a-better) instead of Perlin Noise.
 
 ## Preformance
 Here are some preformance charts for NoiseDotNet, with FastNoise2 included as a baseline. Preformance is measured in nanoseconds per sample. 
