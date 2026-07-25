@@ -5,6 +5,33 @@
 
 .vscode/
 
+# Unity generated files (applies to Unity projects nested in this repository)
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Mm]emoryCaptures/
+**/[Rr]ecordings/
+**/ExportedObj/
+**/.consulo/
+**/.gradle/
+**/.vs/
+**/*.csproj
+**/*.unityproj
+**/*.sln
+**/*.slnx
+**/*.unitypackage
+**/*.apk
+**/*.aab
+**/*.app
+**/*.blend1
+**/*.blend1.meta
+**/sysinfo.txt
+**/crashlytics-build.properties
+
 # User-specific files
 *.rsuser
 *.suo
@@ -87,7 +114,6 @@ StyleCopReport.xml
 *_p.c
 *_h.h
 *.ilk
-*.meta
 *.obj
 *.idb
 *.iobj
