@@ -265,7 +265,7 @@ namespace NoiseDotNet
     /// <summary>
     /// Compiles NoiseNode graphs into register-based bytecode.
     /// </summary>
-    public static class NoiseNodeCompiler
+    public static class NoiseNodeCompiler // get rid of this class, rename the sealed class inside to NoiseNodeCompiler, have NoiseNodeByteCode utility directly construct and use compiler. Also put the primarily logic for ToString() as static function in noisenode bytecode
     {
         /// <summary>
         /// Compiles the graphs needed by the ordered output channels, evaluating shared node instances only once.
@@ -952,5 +952,7 @@ namespace NoiseDotNet
         {
             ByteCode = byteCode;
         }
+
+        // Add tostring here
     }
 }
