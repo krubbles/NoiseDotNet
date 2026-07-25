@@ -1,6 +1,4 @@
-using System.Reflection.Metadata;
-using System.Runtime.InteropServices;
-using System.Threading.Channels;
+using System;
 
 public sealed class NoiseNode
 {
@@ -33,7 +31,9 @@ public sealed class NoiseNode
         // all errors below should indicate an internal error (none should happen if code is working correctly) and include the NoiseNodeType
         if (type.GetInputCount() != _inputs.Length)
         {
-            // AI throw error w/ actual and expected input counts
+            throw new InvalidOperationException(
+                $"Internal error creating NoiseNode of type {type}: " +
+                $"received {_inputs.Length} input channels, but expected {type.GetInputCount()}.");
         }
     }
 
@@ -50,7 +50,9 @@ public sealed class NoiseNode
         // all errors below should indicate an internal error (none should happen if code is working correctly) and include the NoiseNodeType
         if (type.GetOutputCount() != _constantValues.Length)
         {
-            // AI throw error w/ actual and expected input counts
+            throw new InvalidOperationException(
+                $"Internal error creating constant NoiseNode of type {type}: " +
+                $"received {_constantValues.Length} constant values, but expected {type.GetOutputCount()}.");
         }
     }
 
@@ -76,22 +78,53 @@ public sealed class NoiseNode
     /// </summary>
     public NoiseScalar Channel(int channelIndex) => new(this, channelIndex);
 
+    /// <summary>
+    /// Returns this node's only output as a scalar. Throws if this node does not have exactly one output channel.
+    /// </summary>
     public NoiseScalar AsScalar
     {
         get
         {
-            if (OutputChannelCount != 1)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to cast NoiseNode to NoiseScalar: " +
-                    $"NoiseNode of type {Type} has {OutputChannelCount} output channels, " +
-                    "but only nodes with 1 output channel can be cast to a NoiseScalar." +
-                    "Use NoiseNode.Channel(int) to access a specific channel of a NoiseNode with multiple output channels.");
-            }
+            ValidateOutputChannelCount(1, nameof(NoiseScalar));
             return Channel(0);
         }
     }
-    // AI: Add similar properties to AsScalar for Vector2 and Vector3. You can probably lift the error format into a shared constant. Document in the summary tag that they throw if they don't output the expected count.
+
+    /// <summary>
+    /// Returns this node's outputs as a two-component vector. Throws if this node does not have exactly two output channels.
+    /// </summary>
+    public NoiseVector2 AsVector2
+    {
+        get
+        {
+            ValidateOutputChannelCount(2, nameof(NoiseVector2));
+            return new NoiseVector2(Channel(0), Channel(1));
+        }
+    }
+
+    /// <summary>
+    /// Returns this node's outputs as a three-component vector. Throws if this node does not have exactly three output channels.
+    /// </summary>
+    public NoiseVector3 AsVector3
+    {
+        get
+        {
+            ValidateOutputChannelCount(3, nameof(NoiseVector3));
+            return new NoiseVector3(Channel(0), Channel(1), Channel(2));
+        }
+    }
+
+    void ValidateOutputChannelCount(int expectedCount, string targetType)
+    {
+        if (OutputChannelCount != expectedCount)
+        {
+            throw new InvalidOperationException(
+                $"Failed to cast NoiseNode to {targetType}: " +
+                $"NoiseNode of type {Type} has {OutputChannelCount} output channels, " +
+                $"but only nodes with {expectedCount} output channels can be cast to a {targetType}. " +
+                "Use NoiseNode.Channel(int) to access a specific channel of a NoiseNode with a different number of output channels.");
+        }
+    }
 
     /// <summary>
     /// Checks if a number is real, throwing an exception if it is infinity or NaN.
@@ -107,30 +140,91 @@ public sealed class NoiseNode
     const string _constantNotRealErrorMessage = "Failed to create constant NoiseNode because constant was not a real number. ";
 
 
-    // AI: add summary tags to these. No need to document the error case, it is obvious.
-    public static NoiseNode Constant(float x) => new(NoiseNodeType.Constant1__NoIn__x,
-        ValidateIsRealNumber(_constantNotRealErrorMessage, "x", x));
-    public static NoiseNode Constant(float x, float y) => new(NoiseNodeType.Constant2__NoIn__x_y,
+    /// <summary>
+    /// Creates a one-channel constant node.
+    /// </summary>
+    public static NoiseScalar Constant(float x) => new NoiseNode(NoiseNodeType.Constant1__NoIn__x,
+        ValidateIsRealNumber(_constantNotRealErrorMessage, "x", x)).AsScalar;
+
+    /// <summary>
+    /// Creates a two-channel constant node.
+    /// </summary>
+    public static NoiseVector2 Constant(float x, float y) => new NoiseNode(NoiseNodeType.Constant2__NoIn__x_y,
         ValidateIsRealNumber(_constantNotRealErrorMessage, "x", x),
-        ValidateIsRealNumber(_constantNotRealErrorMessage, "y", y));
-    public static NoiseNode Constant(float x, float y, float z) => new(NoiseNodeType.Constant3__NoIn__x_y_z,
+        ValidateIsRealNumber(_constantNotRealErrorMessage, "y", y)).AsVector2;
+
+    /// <summary>
+    /// Creates a three-channel constant node.
+    /// </summary>
+    public static NoiseVector3 Constant(float x, float y, float z) => new NoiseNode(NoiseNodeType.Constant3__NoIn__x_y_z,
         ValidateIsRealNumber(_constantNotRealErrorMessage, "x", x),
         ValidateIsRealNumber(_constantNotRealErrorMessage, "y", y),
-        ValidateIsRealNumber(_constantNotRealErrorMessage, "z", z));
+        ValidateIsRealNumber(_constantNotRealErrorMessage, "z", z)).AsVector3;
+
 
     static NoiseNode InlineConstantCommunative(NoiseNode node)
     {
-        // AI: assume this function is a communative operator type with 2 inputs. it is dependent on InlineConstant() this function should:
-        // if both inputs are constant, return InlineConstant for the node.
-        // if one input is a constant, and the other input matches the root operator type, and that input has a constant input, this should
-        // return the non-constant input of the non-constant input operated with the constant inlined combination of the other input and the constant.
-        // if both inputs match the root operator and both have constant inputs, this should return the operation of the two non-constant inputs operated with the inlined constant.
-        // do not modify any other cases. if these cases don't apply, return the original node.
+        NoiseScalar left = node._inputs[0];
+        NoiseScalar right = node._inputs[1];
+
+        if (left.IsConstant && right.IsConstant)
+            return InlineConstant(node);
+
+        bool leftHasConstant = TrySplitCommutativeOperand(left, node.Type, out NoiseScalar leftValue, out NoiseScalar leftConstant);
+        bool rightHasConstant = TrySplitCommutativeOperand(right, node.Type, out NoiseScalar rightValue, out NoiseScalar rightConstant);
+
+        if (leftHasConstant && rightHasConstant)
+        {
+            NoiseScalar values = new NoiseNode(node.Type, leftValue, rightValue).AsScalar;
+            NoiseScalar constants = InlineConstant(new NoiseNode(node.Type, leftConstant, rightConstant)).AsScalar;
+            return new NoiseNode(node.Type, values, constants);
+        }
+
+        if (left.IsConstant && rightHasConstant)
+        {
+            NoiseScalar constants = InlineConstant(new NoiseNode(node.Type, left, rightConstant)).AsScalar;
+            return new NoiseNode(node.Type, rightValue, constants);
+        }
+
+        if (right.IsConstant && leftHasConstant)
+        {
+            NoiseScalar constants = InlineConstant(new NoiseNode(node.Type, leftConstant, right)).AsScalar;
+            return new NoiseNode(node.Type, leftValue, constants);
+        }
+
+        return node;
+
+        static bool TrySplitCommutativeOperand(
+            NoiseScalar operand,
+            NoiseNodeType operatorType,
+            out NoiseScalar value,
+            out NoiseScalar constant)
+        {
+            value = default;
+            constant = default;
+
+            NoiseNode operandNode = operand.Node;
+            if (operandNode.Type != operatorType || operandNode._inputs.Length != 2)
+                return false;
+
+            NoiseScalar left = operandNode._inputs[0];
+            NoiseScalar right = operandNode._inputs[1];
+            if (left.IsConstant == right.IsConstant)
+                return false;
+
+            value = left.IsConstant ? right : left;
+            constant = left.IsConstant ? left : right;
+            return true;
+        }
     }
 
     static NoiseNode InlineConstant(NoiseNode node)
     {
-        return node; // leaving unimplemented until I figure out what eval api looks like.
+        foreach (NoiseScalar input in node._inputs)
+            if (!input.IsConstant)
+                return node;
+
+        return node;
     }
 
     public static NoiseScalar Add(NoiseScalar a, NoiseScalar b)
@@ -139,7 +233,15 @@ public sealed class NoiseNode
         result = InlineConstantCommunative(result);
         return result.AsScalar;
     }
-    // AI: Add Add() functions that take in NoiseVector2 and NoiseVector3 and return same types. They should just call into scalar add
+
+    public static NoiseVector2 Add(NoiseVector2 a, NoiseVector2 b) => new(
+        Add(a.X, b.X),
+        Add(a.Y, b.Y));
+
+    public static NoiseVector3 Add(NoiseVector3 a, NoiseVector3 b) => new(
+        Add(a.X, b.X),
+        Add(a.Y, b.Y),
+        Add(a.Z, b.Z));
 }
 
 /// <summary>
@@ -176,7 +278,37 @@ public readonly struct NoiseScalar : IEquatable<NoiseScalar>
     public static bool operator !=(NoiseScalar a, NoiseScalar b) => !a.Equals(b);
 }
 
-// AI: Create NoiseVector2, NoiseVector3 types, which contain 2 and 3 NoiseScalars respectively.
+/// <summary>
+/// Contains two scalar noise channels.
+/// </summary>
+public readonly struct NoiseVector2
+{
+    public readonly NoiseScalar X;
+    public readonly NoiseScalar Y;
+
+    public NoiseVector2(NoiseScalar x, NoiseScalar y)
+    {
+        X = x;
+        Y = y;
+    }
+}
+
+/// <summary>
+/// Contains three scalar noise channels.
+/// </summary>
+public readonly struct NoiseVector3
+{
+    public readonly NoiseScalar X;
+    public readonly NoiseScalar Y;
+    public readonly NoiseScalar Z;
+
+    public NoiseVector3(NoiseScalar x, NoiseScalar y, NoiseScalar z)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+    }
+}
 
 /// <summary>
 /// <para>Type of operation a noise node performs.
@@ -204,7 +336,64 @@ public enum NoiseNodeType
 
 public static class NoiseNodeTypeExtensions
 {
-    // hey AI please these with a private static readonly array based cache that parses the enum names once
-    public static int GetInputCount(this NoiseNodeType type) => type.ToString().Split("__")[1].Count('_') + 1;
-    public static int GetOutputCount(this NoiseNodeType type) => type.ToString().Split("__")[2].Count('_') + 1;
+    readonly struct NoiseNodeTypeMetadata
+    {
+        public readonly int InputCount;
+        public readonly int OutputCount;
+
+        public NoiseNodeTypeMetadata(int inputCount, int outputCount)
+        {
+            InputCount = inputCount;
+            OutputCount = outputCount;
+        }
+    }
+
+    static readonly NoiseNodeTypeMetadata[] _metadata = CreateMetadataCache();
+
+    public static int GetInputCount(this NoiseNodeType type) => GetMetadata(type).InputCount;
+    public static int GetOutputCount(this NoiseNodeType type) => GetMetadata(type).OutputCount;
+
+    static ref NoiseNodeTypeMetadata GetMetadata(NoiseNodeType type)
+    {
+        int index = (int)type;
+        if ((uint)index >= (uint)_metadata.Length)
+            throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown NoiseNodeType value.");
+        return ref _metadata[index];
+    }
+
+    static NoiseNodeTypeMetadata[] CreateMetadataCache()
+    {
+        NoiseNodeType[] values = Enum.GetValues<NoiseNodeType>();
+        int maxValue = 0;
+        foreach (NoiseNodeType value in values)
+            maxValue = Math.Max(maxValue, (int)value);
+
+        NoiseNodeTypeMetadata[] metadata = new NoiseNodeTypeMetadata[maxValue + 1];
+        foreach (NoiseNodeType value in values)
+        {
+            if (value == NoiseNodeType.Null)
+                continue;
+
+            string[] nameParts = value.ToString().Split("__");
+            if (nameParts.Length != 3)
+                throw new InvalidOperationException($"NoiseNodeType {value} does not follow the required naming convention.");
+
+            metadata[(int)value] = new NoiseNodeTypeMetadata(
+                CountChannels(nameParts[1]),
+                CountChannels(nameParts[2]));
+        }
+        return metadata;
+    }
+
+    static int CountChannels(string channels)
+    {
+        if (channels == "NoIn")
+            return 0;
+
+        int count = 1;
+        foreach (char character in channels)
+            if (character == '_')
+                count++;
+        return count;
+    }
 }
