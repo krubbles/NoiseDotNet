@@ -242,11 +242,16 @@ public sealed class NoiseNode
         Add(a.X, b.X),
         Add(a.Y, b.Y),
         Add(a.Z, b.Z));
+
+    // AI: add multiply, same structure as add. also add negate and inverse, using those add subtract and divide.
+    // no native subtract/divide bc it makes communtive constant inline hard
+    // u will need to add to enum
 }
+
+// AI: for noisescalar vector2 and vector3 please add operators (+, -, *, /). for vectors allow * and / with a scalar. these should call into static functions in noisenode.
 
 /// <summary>
 /// <para>References a specific channel from the output of a noise node.</para>
-/// <para>Supports implicit casts from NoiseNode (accessing channel 0) and a (NoiseNode node, int channelIndex) tuple.</para>
 /// </summary>
 public readonly struct NoiseScalar : IEquatable<NoiseScalar>
 {
@@ -264,11 +269,6 @@ public readonly struct NoiseScalar : IEquatable<NoiseScalar>
     /// </summary>
     public bool IsConstant => Node.IsConstant;
 
-    public static explicit operator NoiseScalar(NoiseNode node)
-    {
-
-        return new NoiseScalar(node, 0);
-    }
     public static implicit operator NoiseScalar((NoiseNode node, int channelIndex) pair) => new(pair.node, pair.channelIndex);
 
     public bool Equals(NoiseScalar other) => Node == other.Node && ChannelIndex == other.ChannelIndex;
