@@ -415,14 +415,15 @@ public enum NoiseNodeType
     Negate__value__negated,
     Multiply__a_b__product,
     Inverse__value__inverse,
-    Perlin2D__x_y__noise,
-    Perlin3D__x_y_z__noise,
-    Cellular2__x_y__center_edge,
-    Cellular3__x_y_z__center_edge,
+    Perlin2D_noise__x_y__noise,
+    Perlin3D_noise__x_y_z__noise,
+    Cellular2_noise__x_y__center_edge,
+    Cellular3_noise__x_y_z__center_edge,
 }
 
 public static class NoiseNodeTypeExtensions
 {
+    // AI: Add IsNoise here instead of in eval, parse name for the info.
     readonly struct NoiseNodeTypeMetadata
     {
         public readonly int InputCount;

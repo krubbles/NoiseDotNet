@@ -25,13 +25,13 @@ namespace NoiseDotNet
         public static void Evaluate(ReadOnlySpan<byte> bytecode, int seed, Span<float> registerSpace, int batchSize)
         {
             if (batchSize < 0)
-                throw new ArgumentOutOfRangeException(nameof(batchSize));
+                throw new ArgumentOutOfRangeException(nameof(batchSize)); // AI: log value in error. sometimes will be clue to bugs
 
             int offset = 0;
             ByteCodeInfo info = Read<ByteCodeInfo>(bytecode, ref offset);
             ValidateByteCodeInfo(info);
 
-            int requiredRegisterSpace;
+            int requiredRegisterSpace; // AI: weird way to do this. calculate as long, check against int.MaxValue. If its wrong, throw an error explaining the issue. ideal error doesn't force reader to read source to know how to fix
             try
             {
                 requiredRegisterSpace = checked(info.RegisterCount * batchSize);
@@ -48,6 +48,7 @@ namespace NoiseDotNet
                     nameof(registerSpace));
             }
 
+            // init constants
             for (int constantIndex = 0; constantIndex < info.ConstantCount; constantIndex++)
             {
                 float value = Read<float>(bytecode, ref offset);
@@ -69,7 +70,7 @@ namespace NoiseDotNet
                 }
 
                 NoiseNodeType type = (NoiseNodeType)opCode;
-                if (!Enum.IsDefined(type) || !IsExecutable(type))
+                if (!IsExecutable(type))
                     throw new ArgumentException($"Bytecode contains unsupported opcode {opCode}.", nameof(bytecode));
 
                 NoiseOpInfo noiseInfo = default;
@@ -142,14 +143,14 @@ namespace NoiseDotNet
                         output0[i] = 1f / value[i];
                     break;
                 }
-                case NoiseNodeType.Perlin2D__x_y__noise:
+                case NoiseNodeType.Perlin2D_noise__x_y__noise:
                     Noise.GradientNoise2D(
                         GetRegister(registerSpace, inputs[0], batchSize),
                         GetRegister(registerSpace, inputs[1], batchSize),
                         output0,
                         CreateNoiseSettings(noiseInfo, evaluationSeed));
                     break;
-                case NoiseNodeType.Perlin3D__x_y_z__noise:
+                case NoiseNodeType.Perlin3D_noise__x_y_z__noise:
                     Noise.GradientNoise3D(
                         GetRegister(registerSpace, inputs[0], batchSize),
                         GetRegister(registerSpace, inputs[1], batchSize),
@@ -157,7 +158,7 @@ namespace NoiseDotNet
                         output0,
                         CreateNoiseSettings(noiseInfo, evaluationSeed));
                     break;
-                case NoiseNodeType.Cellular2__x_y__center_edge:
+                case NoiseNodeType.Cellular2_noise__x_y__center_edge:
                     Noise.CellularNoise2D(
                         GetRegister(registerSpace, inputs[0], batchSize),
                         GetRegister(registerSpace, inputs[1], batchSize),
@@ -165,7 +166,7 @@ namespace NoiseDotNet
                         GetRegister(registerSpace, outputs[1], batchSize),
                         CreateNoiseSettings(noiseInfo, evaluationSeed));
                     break;
-                case NoiseNodeType.Cellular3__x_y_z__center_edge:
+                case NoiseNodeType.Cellular3_noise__x_y_z__center_edge:
                     Noise.CellularNoise3D(
                         GetRegister(registerSpace, inputs[0], batchSize),
                         GetRegister(registerSpace, inputs[1], batchSize),
@@ -235,20 +236,21 @@ namespace NoiseDotNet
         }
 
         internal static bool IsNoise(NoiseNodeType type) => type is
-            NoiseNodeType.Perlin2D__x_y__noise or
-            NoiseNodeType.Perlin3D__x_y_z__noise or
-            NoiseNodeType.Cellular2__x_y__center_edge or
-            NoiseNodeType.Cellular3__x_y_z__center_edge;
+            NoiseNodeType.Perlin2D_noise__x_y__noise or
+            NoiseNodeType.Perlin3D_noise__x_y_z__noise or
+            NoiseNodeType.Cellular2_noise__x_y__center_edge or
+            NoiseNodeType.Cellular3_noise__x_y_z__center_edge;
 
+            // AI: Annoying to maintain. assume all node types that are defined and not null will be executable
         internal static bool IsExecutable(NoiseNodeType type) => type is
             NoiseNodeType.Add__a_b__sum or
             NoiseNodeType.Negate__value__negated or
             NoiseNodeType.Multiply__a_b__product or
             NoiseNodeType.Inverse__value__inverse or
-            NoiseNodeType.Perlin2D__x_y__noise or
-            NoiseNodeType.Perlin3D__x_y_z__noise or
-            NoiseNodeType.Cellular2__x_y__center_edge or
-            NoiseNodeType.Cellular3__x_y_z__center_edge;
+            NoiseNodeType.Perlin2D_noise__x_y__noise or
+            NoiseNodeType.Perlin3D_noise__x_y_z__noise or
+            NoiseNodeType.Cellular2_noise__x_y__center_edge or
+            NoiseNodeType.Cellular3_noise__x_y_z__center_edge;
 
         internal static void Append<T>(List<byte> bytecode, T value) where T : unmanaged
         {
@@ -274,14 +276,17 @@ namespace NoiseDotNet
         /// <summary>
         /// Compiles a NoiseNode graph, evaluating shared node instances only once.
         /// </summary>
+        /// AI: Now that I think about it, the compile API should take in a params NoiseScalar[] not a NoiseNode. oops. please rework
         public static CompiledNoiseNode Compile(NoiseNode node)
         {
             ArgumentNullException.ThrowIfNull(node);
             return new Compiler(node).Compile();
         }
 
+
         sealed class Compiler
         {
+
             readonly NoiseNode _root;
             readonly Dictionary<NoiseNode, VisitState> _visitStates = new();
             readonly List<NoiseNode> _discoveryOrder = [];
