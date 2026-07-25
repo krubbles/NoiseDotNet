@@ -423,16 +423,17 @@ public enum NoiseNodeType
 
 public static class NoiseNodeTypeExtensions
 {
-    // AI: Add IsNoise here instead of in eval, parse name for the info.
     readonly struct NoiseNodeTypeMetadata
     {
         public readonly int InputCount;
         public readonly int OutputCount;
+        public readonly bool IsNoise;
 
-        public NoiseNodeTypeMetadata(int inputCount, int outputCount)
+        public NoiseNodeTypeMetadata(int inputCount, int outputCount, bool isNoise)
         {
             InputCount = inputCount;
             OutputCount = outputCount;
+            IsNoise = isNoise;
         }
     }
 
@@ -440,6 +441,7 @@ public static class NoiseNodeTypeExtensions
 
     public static int GetInputCount(this NoiseNodeType type) => GetMetadata(type).InputCount;
     public static int GetOutputCount(this NoiseNodeType type) => GetMetadata(type).OutputCount;
+    public static bool IsNoise(this NoiseNodeType type) => GetMetadata(type).IsNoise;
 
     static ref NoiseNodeTypeMetadata GetMetadata(NoiseNodeType type)
     {
@@ -468,7 +470,8 @@ public static class NoiseNodeTypeExtensions
 
             metadata[(int)value] = new NoiseNodeTypeMetadata(
                 CountChannels(nameParts[1]),
-                CountChannels(nameParts[2]));
+                CountChannels(nameParts[2]),
+                nameParts[0].EndsWith("_noise", StringComparison.Ordinal));
         }
         return metadata;
     }

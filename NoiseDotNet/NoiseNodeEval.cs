@@ -25,21 +25,27 @@ namespace NoiseDotNet
         public static void Evaluate(ReadOnlySpan<byte> bytecode, int seed, Span<float> registerSpace, int batchSize)
         {
             if (batchSize < 0)
-                throw new ArgumentOutOfRangeException(nameof(batchSize)); // AI: log value in error. sometimes will be clue to bugs
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(batchSize),
+                    batchSize,
+                    "Batch size cannot be negative.");
+            }
 
             int offset = 0;
             ByteCodeInfo info = Read<ByteCodeInfo>(bytecode, ref offset);
             ValidateByteCodeInfo(info);
 
-            int requiredRegisterSpace; // AI: weird way to do this. calculate as long, check against int.MaxValue. If its wrong, throw an error explaining the issue. ideal error doesn't force reader to read source to know how to fix
-            try
+            long requiredRegisterSpaceLong = (long)info.RegisterCount * batchSize;
+            if (requiredRegisterSpaceLong > int.MaxValue)
             {
-                requiredRegisterSpace = checked(info.RegisterCount * batchSize);
+                throw new ArgumentException(
+                    $"The compiled graph requires {info.RegisterCount} registers and the requested batch size is {batchSize}, " +
+                    $"which would require {requiredRegisterSpaceLong} float values. A Span can contain at most {int.MaxValue} values; " +
+                    "use a smaller batch size or compile a graph that requires fewer registers.",
+                    nameof(batchSize));
             }
-            catch (OverflowException exception)
-            {
-                throw new ArgumentOutOfRangeException(nameof(batchSize), exception);
-            }
+            int requiredRegisterSpace = (int)requiredRegisterSpaceLong;
 
             if (registerSpace.Length < requiredRegisterSpace)
             {
@@ -74,7 +80,7 @@ namespace NoiseDotNet
                     throw new ArgumentException($"Bytecode contains unsupported opcode {opCode}.", nameof(bytecode));
 
                 NoiseOpInfo noiseInfo = default;
-                if (IsNoise(type))
+                if (type.IsNoise())
                     noiseInfo = Read<NoiseOpInfo>(bytecode, ref offset);
 
                 int inputCount = type.GetInputCount();
@@ -96,9 +102,11 @@ namespace NoiseDotNet
         }
 
         /// <summary>
-        /// Compiles a NoiseNode graph into reusable bytecode.
+        /// Compiles the graphs needed by the ordered output channels into reusable bytecode.
         /// </summary>
-        public static CompiledNoiseNode Compile(NoiseNode node) => NoiseNodeCompiler.Compile(node);
+        /// <param name="outputs">Output channels, in the order they should appear in the output registers.</param>
+        public static CompiledNoiseNode Compile(params NoiseScalar[] outputs) =>
+            NoiseNodeCompiler.Compile(outputs);
 
         static void EvaluateInstruction(
             NoiseNodeType type,
@@ -235,22 +243,8 @@ namespace NoiseDotNet
                 throw new ArgumentException("Bytecode contains an invalid header.");
         }
 
-        internal static bool IsNoise(NoiseNodeType type) => type is
-            NoiseNodeType.Perlin2D_noise__x_y__noise or
-            NoiseNodeType.Perlin3D_noise__x_y_z__noise or
-            NoiseNodeType.Cellular2_noise__x_y__center_edge or
-            NoiseNodeType.Cellular3_noise__x_y_z__center_edge;
-
-            // AI: Annoying to maintain. assume all node types that are defined and not null will be executable
-        internal static bool IsExecutable(NoiseNodeType type) => type is
-            NoiseNodeType.Add__a_b__sum or
-            NoiseNodeType.Negate__value__negated or
-            NoiseNodeType.Multiply__a_b__product or
-            NoiseNodeType.Inverse__value__inverse or
-            NoiseNodeType.Perlin2D_noise__x_y__noise or
-            NoiseNodeType.Perlin3D_noise__x_y_z__noise or
-            NoiseNodeType.Cellular2_noise__x_y__center_edge or
-            NoiseNodeType.Cellular3_noise__x_y_z__center_edge;
+        internal static bool IsExecutable(NoiseNodeType type) =>
+            type != NoiseNodeType.Null && Enum.IsDefined(type);
 
         internal static void Append<T>(List<byte> bytecode, T value) where T : unmanaged
         {
@@ -274,20 +268,22 @@ namespace NoiseDotNet
     public static class NoiseNodeCompiler
     {
         /// <summary>
-        /// Compiles a NoiseNode graph, evaluating shared node instances only once.
+        /// Compiles the graphs needed by the ordered output channels, evaluating shared node instances only once.
+        /// Compiled outputs are written to the first registers in the same order as <paramref name="outputs"/>.
         /// </summary>
-        /// AI: Now that I think about it, the compile API should take in a params NoiseScalar[] not a NoiseNode. oops. please rework
-        public static CompiledNoiseNode Compile(NoiseNode node)
+        public static CompiledNoiseNode Compile(params NoiseScalar[] outputs)
         {
-            ArgumentNullException.ThrowIfNull(node);
-            return new Compiler(node).Compile();
+            ArgumentNullException.ThrowIfNull(outputs);
+            if (outputs.Length == 0)
+                throw new ArgumentException("At least one output channel must be provided.", nameof(outputs));
+            return new Compiler((NoiseScalar[])outputs.Clone()).Compile();
         }
 
 
         sealed class Compiler
         {
 
-            readonly NoiseNode _root;
+            readonly NoiseScalar[] _outputs;
             readonly Dictionary<NoiseNode, VisitState> _visitStates = new();
             readonly List<NoiseNode> _discoveryOrder = [];
             readonly Dictionary<NoiseNode, NoiseScalar[]> _effectiveInputs = new();
@@ -304,26 +300,30 @@ namespace NoiseDotNet
             int _nextRegister;
             int _maxRegisterCount;
 
-            public Compiler(NoiseNode root)
+            public Compiler(NoiseScalar[] outputs)
             {
-                _root = root;
+                _outputs = outputs;
             }
 
             public CompiledNoiseNode Compile()
             {
-                for (int channel = 0; channel < _root.OutputChannelCount; channel++)
-                    AddUse(new ValueKey(_root, channel));
+                for (int outputIndex = 0; outputIndex < _outputs.Length; outputIndex++)
+                {
+                    NoiseScalar output = _outputs[outputIndex];
+                    ValidateOutput(output, outputIndex);
+                    AddUse(new ValueKey(output.Node, output.ChannelIndex));
+                    Visit(output.Node);
+                }
 
-                Visit(_root);
                 InitializeLeafRegisters();
                 AssignNoiseSeeds();
-                CompileNode(_root, isRoot: true);
-                CopyLeafRootToOutputRegisters();
+                CompileDependencies(_outputs);
+                MaterializeOutputs();
 
                 ByteCodeInfo info = new()
                 {
                     InputCount = _inputCount,
-                    OutputCount = _root.OutputChannelCount,
+                    OutputCount = _outputs.Length,
                     RegisterCount = _maxRegisterCount,
                     ConstantCount = _constants.Count,
                 };
@@ -368,7 +368,7 @@ namespace NoiseDotNet
                     return cached;
 
                 NoiseScalar[] inputs = node.Inputs.ToArray();
-                if (NoiseNodeByteCode.IsNoise(node.Type))
+                if (node.Type.IsNoise())
                 {
                     for (int i = 0; i < inputs.Length; i++)
                         inputs[i] = RemoveConstantScale(inputs[i], out _);
@@ -447,7 +447,7 @@ namespace NoiseDotNet
                     }
                 }
 
-                _nextRegister = Math.Max(constantRegister, _root.OutputChannelCount);
+                _nextRegister = Math.Max(constantRegister, _outputs.Length);
                 _maxRegisterCount = _nextRegister;
                 for (int register = 0; register < _nextRegister; register++)
                 {
@@ -461,12 +461,12 @@ namespace NoiseDotNet
                 int nextSeed = 0;
                 foreach (NoiseNode node in _discoveryOrder)
                 {
-                    if (NoiseNodeByteCode.IsNoise(node.Type))
+                    if (node.Type.IsNoise())
                         _noiseSeeds.Add(node, nextSeed++);
                 }
             }
 
-            void CompileNode(NoiseNode node, bool isRoot)
+            void CompileNode(NoiseNode node)
             {
                 if (_compiledNodes.Contains(node))
                     return;
@@ -480,14 +480,14 @@ namespace NoiseDotNet
                 if (!NoiseNodeByteCode.IsExecutable(node.Type))
                     throw new NotSupportedException($"Cannot compile NoiseNodeType {node.Type}.");
 
-                if (TryCompileAccumulatedNoise(node, isRoot))
+                if (TryCompileAccumulatedNoise(node))
                     return;
 
                 NoiseScalar[] inputs = GetEffectiveInputs(node);
                 CompileDependencies(inputs);
 
                 int[] inputRegisters = GetRegisters(inputs);
-                int[] outputRegisters = AllocateOutputs(node, inputs, isRoot);
+                int[] outputRegisters = AllocateOutputs(node, inputs);
                 EmitInstruction(node, inputs, inputRegisters, outputRegisters, accumulate: false);
 
                 for (int channel = 0; channel < outputRegisters.Length; channel++)
@@ -495,10 +495,10 @@ namespace NoiseDotNet
                 _compiledNodes.Add(node);
 
                 Consume(inputs, outputRegisters);
-                ReleaseUnusedOutputs(node, isRoot);
+                ReleaseUnusedOutputs(node);
             }
 
-            bool TryCompileAccumulatedNoise(NoiseNode node, bool isRoot)
+            bool TryCompileAccumulatedNoise(NoiseNode node)
             {
                 if (node.Type != NoiseNodeType.Add__a_b__sum || node.OutputChannelCount != 1)
                     return false;
@@ -533,11 +533,7 @@ namespace NoiseDotNet
 
                 int otherRegister = _registers[new ValueKey(otherValue.Node, otherValue.ChannelIndex)];
                 int outputRegister;
-                if (isRoot)
-                {
-                    outputRegister = 0;
-                }
-                else if (GetRemainingUses(otherValue) == 1 &&
+                if (GetRemainingUses(otherValue) == 1 &&
                     CanOverwriteRegister(otherRegister, dependencies))
                 {
                     outputRegister = otherRegister;
@@ -586,7 +582,7 @@ namespace NoiseDotNet
                 });
 
                 foreach ((NoiseNode dependency, _, _) in dependencies)
-                    CompileNode(dependency, isRoot: false);
+                    CompileNode(dependency);
             }
 
             int GetPressure(NoiseNode node)
@@ -603,19 +599,9 @@ namespace NoiseDotNet
                 return result;
             }
 
-            int[] AllocateOutputs(NoiseNode node, ReadOnlySpan<NoiseScalar> inputs, bool isRoot)
+            int[] AllocateOutputs(NoiseNode node, ReadOnlySpan<NoiseScalar> inputs)
             {
                 int[] outputs = new int[node.OutputChannelCount];
-                if (isRoot)
-                {
-                    for (int channel = 0; channel < outputs.Length; channel++)
-                    {
-                        outputs[channel] = channel;
-                        _freeRegisters.Remove(channel);
-                    }
-                    return outputs;
-                }
-
                 HashSet<int> assigned = [];
                 for (int channel = 0; channel < outputs.Length; channel++)
                 {
@@ -686,7 +672,7 @@ namespace NoiseDotNet
                     throw new InvalidOperationException($"NoiseNodeType {node.Type} cannot be represented by the bytecode opcode.");
 
                 NoiseNodeByteCode.Append(_instructions, (byte)opCode);
-                if (NoiseNodeByteCode.IsNoise(node.Type))
+                if (node.Type.IsNoise())
                 {
                     NoiseOpInfo noiseInfo = CreateNoiseInfo(node, inputs, accumulate);
                     NoiseNodeByteCode.Append(_instructions, noiseInfo);
@@ -750,11 +736,8 @@ namespace NoiseDotNet
                 }
             }
 
-            void ReleaseUnusedOutputs(NoiseNode node, bool isRoot)
+            void ReleaseUnusedOutputs(NoiseNode node)
             {
-                if (isRoot)
-                    return;
-
                 for (int channel = 0; channel < node.OutputChannelCount; channel++)
                 {
                     ValueKey key = new(node, channel);
@@ -777,17 +760,58 @@ namespace NoiseDotNet
                 return false;
             }
 
-            void CopyLeafRootToOutputRegisters()
+            void MaterializeOutputs()
             {
-                if (!IsCoordinates(_root.Type) && !_root.IsConstant)
-                    return;
-
-                for (int channel = 0; channel < _root.OutputChannelCount; channel++)
+                List<RegisterMove> pending = [];
+                for (int outputIndex = 0; outputIndex < _outputs.Length; outputIndex++)
                 {
-                    int source = _registers[new ValueKey(_root, channel)];
-                    if (source != channel)
-                        NoiseNodeByteCode.AppendCopy(_instructions, source, channel);
+                    NoiseScalar output = _outputs[outputIndex];
+                    int source = _registers[new ValueKey(output.Node, output.ChannelIndex)];
+                    if (source != outputIndex)
+                        pending.Add(new RegisterMove(source, outputIndex));
                 }
+
+                while (pending.Count > 0)
+                {
+                    int safeMoveIndex = FindSafeMove(pending);
+                    if (safeMoveIndex >= 0)
+                    {
+                        RegisterMove move = pending[safeMoveIndex];
+                        NoiseNodeByteCode.AppendCopy(_instructions, move.Source, move.Destination);
+                        pending.RemoveAt(safeMoveIndex);
+                        continue;
+                    }
+
+                    int sourceToPreserve = pending[0].Source;
+                    int temporary = AllocateRegister();
+                    NoiseNodeByteCode.AppendCopy(_instructions, sourceToPreserve, temporary);
+                    for (int i = 0; i < pending.Count; i++)
+                    {
+                        if (pending[i].Source == sourceToPreserve)
+                            pending[i] = new RegisterMove(temporary, pending[i].Destination);
+                    }
+                }
+            }
+
+            static int FindSafeMove(List<RegisterMove> pending)
+            {
+                for (int candidateIndex = 0; candidateIndex < pending.Count; candidateIndex++)
+                {
+                    int destination = pending[candidateIndex].Destination;
+                    bool destinationIsNeeded = false;
+                    for (int otherIndex = 0; otherIndex < pending.Count; otherIndex++)
+                    {
+                        if (otherIndex != candidateIndex && pending[otherIndex].Source == destination)
+                        {
+                            destinationIsNeeded = true;
+                            break;
+                        }
+                    }
+
+                    if (!destinationIsNeeded)
+                        return candidateIndex;
+                }
+                return -1;
             }
 
             void AddUse(ValueKey key)
@@ -805,7 +829,7 @@ namespace NoiseDotNet
             static bool IsSingleOutputNoise(NoiseScalar scalar) =>
                 scalar.ChannelIndex == 0 &&
                 scalar.Node.OutputChannelCount == 1 &&
-                NoiseNodeByteCode.IsNoise(scalar.Node.Type);
+                scalar.Node.Type.IsNoise();
 
             static bool IsCoordinates(NoiseNodeType type) => type is
                 NoiseNodeType.Coords1__NoIn__x or
@@ -827,10 +851,39 @@ namespace NoiseDotNet
                 }
             }
 
+            static void ValidateOutput(NoiseScalar output, int outputIndex)
+            {
+                if (output.Node is null)
+                {
+                    throw new ArgumentException(
+                        $"Output channel at index {outputIndex} contains a null NoiseNode.",
+                        "outputs");
+                }
+                if ((uint)output.ChannelIndex >= (uint)output.Node.OutputChannelCount)
+                {
+                    throw new ArgumentException(
+                        $"Output channel at index {outputIndex} references channel {output.ChannelIndex} " +
+                        $"of NoiseNodeType {output.Node.Type}, which has {output.Node.OutputChannelCount} output channels.",
+                        "outputs");
+                }
+            }
+
             enum VisitState : byte
             {
                 Visiting,
                 Visited,
+            }
+
+            readonly struct RegisterMove
+            {
+                public readonly int Source;
+                public readonly int Destination;
+
+                public RegisterMove(int source, int destination)
+                {
+                    Source = source;
+                    Destination = destination;
+                }
             }
 
             readonly struct ValueKey : IEquatable<ValueKey>
