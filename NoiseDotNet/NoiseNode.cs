@@ -243,12 +243,73 @@ public sealed class NoiseNode
         Add(a.Y, b.Y),
         Add(a.Z, b.Z));
 
-    // AI: add multiply, same structure as add. also add negate and inverse, using those add subtract and divide.
-    // no native subtract/divide bc it makes communtive constant inline hard
-    // u will need to add to enum
-}
+    public static NoiseScalar Negate(NoiseScalar value) =>
+        new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
 
-// AI: for noisescalar vector2 and vector3 please add operators (+, -, *, /). for vectors allow * and / with a scalar. these should call into static functions in noisenode.
+    public static NoiseVector2 Negate(NoiseVector2 value) => new(
+        Negate(value.X),
+        Negate(value.Y));
+
+    public static NoiseVector3 Negate(NoiseVector3 value) => new(
+        Negate(value.X),
+        Negate(value.Y),
+        Negate(value.Z));
+
+    public static NoiseScalar Subtract(NoiseScalar a, NoiseScalar b) => Add(a, Negate(b));
+
+    public static NoiseVector2 Subtract(NoiseVector2 a, NoiseVector2 b) => Add(a, Negate(b));
+
+    public static NoiseVector3 Subtract(NoiseVector3 a, NoiseVector3 b) => Add(a, Negate(b));
+
+    public static NoiseScalar Multiply(NoiseScalar a, NoiseScalar b)
+    {
+        NoiseNode result = new(NoiseNodeType.Multiply__a_b__product, a, b);
+        result = InlineConstantCommunative(result);
+        return result.AsScalar;
+    }
+
+    public static NoiseVector2 Multiply(NoiseVector2 a, NoiseVector2 b) => new(
+        Multiply(a.X, b.X),
+        Multiply(a.Y, b.Y));
+
+    public static NoiseVector3 Multiply(NoiseVector3 a, NoiseVector3 b) => new(
+        Multiply(a.X, b.X),
+        Multiply(a.Y, b.Y),
+        Multiply(a.Z, b.Z));
+
+    public static NoiseVector2 Multiply(NoiseVector2 vector, NoiseScalar scalar) => new(
+        Multiply(vector.X, scalar),
+        Multiply(vector.Y, scalar));
+
+    public static NoiseVector3 Multiply(NoiseVector3 vector, NoiseScalar scalar) => new(
+        Multiply(vector.X, scalar),
+        Multiply(vector.Y, scalar),
+        Multiply(vector.Z, scalar));
+
+    public static NoiseScalar Inverse(NoiseScalar value) =>
+        new NoiseNode(NoiseNodeType.Inverse__value__inverse, value).AsScalar;
+
+    public static NoiseVector2 Inverse(NoiseVector2 value) => new(
+        Inverse(value.X),
+        Inverse(value.Y));
+
+    public static NoiseVector3 Inverse(NoiseVector3 value) => new(
+        Inverse(value.X),
+        Inverse(value.Y),
+        Inverse(value.Z));
+
+    public static NoiseScalar Divide(NoiseScalar a, NoiseScalar b) => Multiply(a, Inverse(b));
+
+    public static NoiseVector2 Divide(NoiseVector2 a, NoiseVector2 b) => Multiply(a, Inverse(b));
+
+    public static NoiseVector3 Divide(NoiseVector3 a, NoiseVector3 b) => Multiply(a, Inverse(b));
+
+    public static NoiseVector2 Divide(NoiseVector2 vector, NoiseScalar scalar) =>
+        Multiply(vector, Inverse(scalar));
+
+    public static NoiseVector3 Divide(NoiseVector3 vector, NoiseScalar scalar) =>
+        Multiply(vector, Inverse(scalar));
+}
 
 /// <summary>
 /// <para>References a specific channel from the output of a noise node.</para>
@@ -274,6 +335,11 @@ public readonly struct NoiseScalar : IEquatable<NoiseScalar>
     public bool Equals(NoiseScalar other) => Node == other.Node && ChannelIndex == other.ChannelIndex;
     public override bool Equals(object? obj) => obj is NoiseScalar other && Equals(other);
     public override int GetHashCode() => HashCode.Combine(Node, ChannelIndex);
+    public static NoiseScalar operator +(NoiseScalar a, NoiseScalar b) => NoiseNode.Add(a, b);
+    public static NoiseScalar operator -(NoiseScalar value) => NoiseNode.Negate(value);
+    public static NoiseScalar operator -(NoiseScalar a, NoiseScalar b) => NoiseNode.Subtract(a, b);
+    public static NoiseScalar operator *(NoiseScalar a, NoiseScalar b) => NoiseNode.Multiply(a, b);
+    public static NoiseScalar operator /(NoiseScalar a, NoiseScalar b) => NoiseNode.Divide(a, b);
     public static bool operator ==(NoiseScalar a, NoiseScalar b) => a.Equals(b);
     public static bool operator !=(NoiseScalar a, NoiseScalar b) => !a.Equals(b);
 }
@@ -291,6 +357,15 @@ public readonly struct NoiseVector2
         X = x;
         Y = y;
     }
+
+    public static NoiseVector2 operator +(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Add(a, b);
+    public static NoiseVector2 operator -(NoiseVector2 value) => NoiseNode.Negate(value);
+    public static NoiseVector2 operator -(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Subtract(a, b);
+    public static NoiseVector2 operator *(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Multiply(a, b);
+    public static NoiseVector2 operator *(NoiseVector2 vector, NoiseScalar scalar) => NoiseNode.Multiply(vector, scalar);
+    public static NoiseVector2 operator *(NoiseScalar scalar, NoiseVector2 vector) => NoiseNode.Multiply(vector, scalar);
+    public static NoiseVector2 operator /(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Divide(a, b);
+    public static NoiseVector2 operator /(NoiseVector2 vector, NoiseScalar scalar) => NoiseNode.Divide(vector, scalar);
 }
 
 /// <summary>
@@ -308,6 +383,15 @@ public readonly struct NoiseVector3
         Y = y;
         Z = z;
     }
+
+    public static NoiseVector3 operator +(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Add(a, b);
+    public static NoiseVector3 operator -(NoiseVector3 value) => NoiseNode.Negate(value);
+    public static NoiseVector3 operator -(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Subtract(a, b);
+    public static NoiseVector3 operator *(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Multiply(a, b);
+    public static NoiseVector3 operator *(NoiseVector3 vector, NoiseScalar scalar) => NoiseNode.Multiply(vector, scalar);
+    public static NoiseVector3 operator *(NoiseScalar scalar, NoiseVector3 vector) => NoiseNode.Multiply(vector, scalar);
+    public static NoiseVector3 operator /(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Divide(a, b);
+    public static NoiseVector3 operator /(NoiseVector3 vector, NoiseScalar scalar) => NoiseNode.Divide(vector, scalar);
 }
 
 /// <summary>
@@ -328,6 +412,9 @@ public enum NoiseNodeType
     Constant2__NoIn__x_y,
     Constant3__NoIn__x_y_z,
     Add__a_b__sum,
+    Negate__value__negated,
+    Multiply__a_b__product,
+    Inverse__value__inverse,
     Perlin2D__x_y__noise,
     Perlin3D__x_y_z__noise,
     Cellular2__x_y__center_edge,
