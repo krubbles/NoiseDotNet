@@ -329,6 +329,27 @@ public sealed class NoiseNode
         Pow(value.Y, power),
         Pow(value.Z, power));
 
+    /// <summary>
+    /// Clamps a scalar to [0, 1], then applies the smoothstep curve x²(3 - 2x).
+    /// </summary>
+    public static NoiseScalar SmoothStep(NoiseScalar value) =>
+        new NoiseNode(NoiseNodeType.SmoothStep01__value__result, value).AsScalar;
+
+    /// <summary>
+    /// Applies <see cref="SmoothStep01(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector2 SmoothStep(NoiseVector2 value) => new(
+        SmoothStep(value.X),
+        SmoothStep(value.Y));
+
+    /// <summary>
+    /// Applies <see cref="SmoothStep01(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector3 SmoothStep(NoiseVector3 value) => new(
+        SmoothStep(value.X),
+        SmoothStep(value.Y),
+        SmoothStep(value.Z));
+
     public static NoiseScalar Negate(NoiseScalar value) =>
         new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
 
@@ -508,6 +529,7 @@ public enum NoiseNodeType
     Min__a_b__min,
     Max__a_b__max,
     Pow__value_power__result,
+    SmoothStep01__value__result,
 }
 
 public static class NoiseNodeTypeExtensions

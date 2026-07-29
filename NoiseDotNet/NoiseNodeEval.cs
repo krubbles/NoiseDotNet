@@ -267,6 +267,16 @@ namespace NoiseDotNet
                             output0[i] = MathF.Pow(value[i], power[i]);
                         break;
                     }
+                case NoiseNodeType.SmoothStep01__value__result:
+                    {
+                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
+                        for (int i = 0; i < batchSize; i++)
+                        {
+                            float clamped = Math.Clamp(value[i], 0f, 1f);
+                            output0[i] = clamped * clamped * (3f - 2f * clamped);
+                        }
+                        break;
+                    }
                 case NoiseNodeType.Negate__value__negated:
                     {
                         Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);

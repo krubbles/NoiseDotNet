@@ -188,6 +188,27 @@ namespace Tests
             Assert.That(sharedPower.Y.Node.Type, Is.EqualTo(NoiseNodeType.Pow__value_power__result));
         }
 
+        [Test]
+        public void SmoothStep01ClampsAndSmoothsScalarAndVectorValues()
+        {
+            // The fixed coordinate set includes values below zero, inside the unit interval,
+            // and above one, validating both endpoint clamping and the smoothstep polynomial.
+            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseScalar smoothed = NoiseNode.SmoothStep01(coordinates.X);
+
+            float[] actual = Evaluate(NoiseNodeByteCode.Compile(smoothed), seed: 0);
+            for (int i = 0; i < XCoordinates.Length; i++)
+            {
+                float clamped = Math.Clamp(XCoordinates[i], 0f, 1f);
+                float expected = clamped * clamped * (3f - 2f * clamped);
+                AssertEqualEnough(expected, actual[i], $"Smoothstep sample {i} was incorrect.");
+            }
+
+            NoiseVector2 vectorResult = NoiseNode.SmoothStep01(coordinates);
+            Assert.That(vectorResult.X.Node.Type, Is.EqualTo(NoiseNodeType.SmoothStep01__value__result));
+            Assert.That(vectorResult.Y.Node.Type, Is.EqualTo(NoiseNodeType.SmoothStep01__value__result));
+        }
+
         static NoiseVector2 CreateCoordinates2D() =>
             new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
 
