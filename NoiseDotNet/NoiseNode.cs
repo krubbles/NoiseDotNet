@@ -15,7 +15,6 @@ namespace NoiseDotNet
         public ReadOnlySpan<float> ConstantValues => _constantValues.AsSpan();
         readonly float[] _constantValues;
 
-
         /// <summary>
         /// Inputs[i] = the i-th input channel for a noise node. Only valid for noise nodes with inputs, otherwise empty.
         /// </summary>
@@ -240,8 +239,19 @@ namespace NoiseDotNet
 
         static readonly NoiseNodeTypeMetadata[] _metadata = CreateMetadataCache();
 
+        /// <summary>
+        /// Returns the number of input channels for the given node type.
+        /// </summary>
         public static int GetInputCount(this NoiseNodeType type) => GetMetadata(type).InputCount;
+
+        /// <summary>
+        /// Returns the number of output channels for the given node type.
+        /// </summary>
         public static int GetOutputCount(this NoiseNodeType type) => GetMetadata(type).OutputCount;
+
+        /// <summary>
+        /// Returns whether the given node type is a noise node (varies based on seed).
+        /// </summary>
         public static bool IsNoise(this NoiseNodeType type) => GetMetadata(type).IsNoise;
 
         static ref NoiseNodeTypeMetadata GetMetadata(NoiseNodeType type)
