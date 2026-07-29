@@ -168,6 +168,26 @@ namespace Tests
             Assert.That(vectorMaximum.Y.Node.Type, Is.EqualTo(NoiseNodeType.Max__a_b__max));
         }
 
+        [Test]
+        public void PowEvaluatesScalarAndVectorPowers()
+        {
+            // Squaring the coordinate samples covers negative and positive bases, while the
+            // vector overloads verify that component-wise and shared exponents build Pow nodes.
+            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseScalar squared = NoiseNode.Pow(coordinates.X, NoiseNode.Constant(2f));
+
+            float[] squaredValues = Evaluate(NoiseNodeByteCode.Compile(squared), seed: 0);
+            for (int i = 0; i < XCoordinates.Length; i++)
+                AssertEqualEnough(MathF.Pow(XCoordinates[i], 2f), squaredValues[i], $"Power sample {i} was incorrect.");
+
+            NoiseVector2 componentPowers = NoiseNode.Pow(coordinates, NoiseNode.Constant(2f, 3f));
+            NoiseVector2 sharedPower = NoiseNode.Pow(coordinates, NoiseNode.Constant(0.5f));
+            Assert.That(componentPowers.X.Node.Type, Is.EqualTo(NoiseNodeType.Pow__value_power__result));
+            Assert.That(componentPowers.Y.Node.Type, Is.EqualTo(NoiseNodeType.Pow__value_power__result));
+            Assert.That(sharedPower.X.Node.Type, Is.EqualTo(NoiseNodeType.Pow__value_power__result));
+            Assert.That(sharedPower.Y.Node.Type, Is.EqualTo(NoiseNodeType.Pow__value_power__result));
+        }
+
         static NoiseVector2 CreateCoordinates2D() =>
             new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
 

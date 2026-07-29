@@ -293,6 +293,42 @@ public sealed class NoiseNode
         Max(a.Y, b.Y),
         Max(a.Z, b.Z));
 
+    /// <summary>
+    /// Raises a scalar value to a scalar power.
+    /// </summary>
+    public static NoiseScalar Pow(NoiseScalar value, NoiseScalar power) =>
+        new NoiseNode(NoiseNodeType.Pow__value_power__result, value, power).AsScalar;
+
+    /// <summary>
+    /// Raises each component of a vector to the corresponding component of another vector.
+    /// </summary>
+    public static NoiseVector2 Pow(NoiseVector2 value, NoiseVector2 power) => new(
+        Pow(value.X, power.X),
+        Pow(value.Y, power.Y));
+
+    /// <summary>
+    /// Raises each component of a vector to the corresponding component of another vector.
+    /// </summary>
+    public static NoiseVector3 Pow(NoiseVector3 value, NoiseVector3 power) => new(
+        Pow(value.X, power.X),
+        Pow(value.Y, power.Y),
+        Pow(value.Z, power.Z));
+
+    /// <summary>
+    /// Raises each component of a vector to the same scalar power.
+    /// </summary>
+    public static NoiseVector2 Pow(NoiseVector2 value, NoiseScalar power) => new(
+        Pow(value.X, power),
+        Pow(value.Y, power));
+
+    /// <summary>
+    /// Raises each component of a vector to the same scalar power.
+    /// </summary>
+    public static NoiseVector3 Pow(NoiseVector3 value, NoiseScalar power) => new(
+        Pow(value.X, power),
+        Pow(value.Y, power),
+        Pow(value.Z, power));
+
     public static NoiseScalar Negate(NoiseScalar value) =>
         new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
 
@@ -471,6 +507,7 @@ public enum NoiseNodeType
     Cellular3_noise__x_y_z__center_edge,
     Min__a_b__min,
     Max__a_b__max,
+    Pow__value_power__result,
 }
 
 public static class NoiseNodeTypeExtensions

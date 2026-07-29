@@ -259,6 +259,14 @@ namespace NoiseDotNet
                             output0[i] = MathF.Max(a[i], b[i]);
                         break;
                     }
+                case NoiseNodeType.Pow__value_power__result:
+                    {
+                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> power = GetRegister(registerSpace, inputs[1], batchSize);
+                        for (int i = 0; i < batchSize; i++)
+                            output0[i] = MathF.Pow(value[i], power[i]);
+                        break;
+                    }
                 case NoiseNodeType.Negate__value__negated:
                     {
                         Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
