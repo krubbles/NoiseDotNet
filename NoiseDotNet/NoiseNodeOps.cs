@@ -79,6 +79,203 @@ namespace NoiseDotNet
         /// </summary>
         public static NoiseVector3 Coordinates(NoiseVector3 frequencyScales) => XYZ * frequencyScales;
 
+        /// <summary>
+        /// Returns a clone of <paramref name="original"/> with every two-dimensional noise
+        /// function's coordinates transformed by the basis vectors <paramref name="i"/> and
+        /// <paramref name="j"/>.
+        /// </summary>
+        public static NoiseScalar Transform(NoiseScalar original, NoiseVector2 i, NoiseVector2 j) =>
+            Transform(
+                new NoiseScalar[] { original },
+                new NoiseScalar[][]
+                {
+                    new NoiseScalar[] { i.X, i.Y },
+                    new NoiseScalar[] { j.X, j.Y },
+                })[0];
+
+        /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector2, NoiseVector2)"/>
+        public static NoiseVector2 Transform(NoiseVector2 original, NoiseVector2 i, NoiseVector2 j)
+        {
+            NoiseScalar[] transformed = Transform(
+                new NoiseScalar[] { original.X, original.Y },
+                new NoiseScalar[][]
+                {
+                    new NoiseScalar[] { i.X, i.Y },
+                    new NoiseScalar[] { j.X, j.Y },
+                });
+            return new(transformed[0], transformed[1]);
+        }
+
+        /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector2, NoiseVector2)"/>
+        public static NoiseVector3 Transform(NoiseVector3 original, NoiseVector2 i, NoiseVector2 j)
+        {
+            NoiseScalar[] transformed = Transform(
+                new NoiseScalar[] { original.X, original.Y, original.Z },
+                new NoiseScalar[][]
+                {
+                    new NoiseScalar[] { i.X, i.Y },
+                    new NoiseScalar[] { j.X, j.Y },
+                });
+            return new(transformed[0], transformed[1], transformed[2]);
+        }
+
+        /// <summary>
+        /// Returns a clone of <paramref name="original"/> with every three-dimensional noise
+        /// function's coordinates transformed by the basis vectors <paramref name="i"/>,
+        /// <paramref name="j"/>, and <paramref name="k"/>.
+        /// </summary>
+        public static NoiseScalar Transform(NoiseScalar original, NoiseVector3 i, NoiseVector3 j, NoiseVector3 k) =>
+            Transform(
+                new NoiseScalar[] { original },
+                new NoiseScalar[][]
+                {
+                    new NoiseScalar[] { i.X, i.Y, i.Z },
+                    new NoiseScalar[] { j.X, j.Y, j.Z },
+                    new NoiseScalar[] { k.X, k.Y, k.Z },
+                })[0];
+
+        /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector3, NoiseVector3, NoiseVector3)"/>
+        public static NoiseVector2 Transform(NoiseVector2 original, NoiseVector3 i, NoiseVector3 j, NoiseVector3 k)
+        {
+            NoiseScalar[] transformed = Transform(
+                new NoiseScalar[] { original.X, original.Y },
+                new NoiseScalar[][]
+                {
+                    new NoiseScalar[] { i.X, i.Y, i.Z },
+                    new NoiseScalar[] { j.X, j.Y, j.Z },
+                    new NoiseScalar[] { k.X, k.Y, k.Z },
+                });
+            return new(transformed[0], transformed[1]);
+        }
+
+        /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector3, NoiseVector3, NoiseVector3)"/>
+        public static NoiseVector3 Transform(NoiseVector3 original,NoiseVector3 i, NoiseVector3 j, NoiseVector3 k)
+        {
+            NoiseScalar[] transformed = Transform(
+                new NoiseScalar[] { original.X, original.Y, original.Z },
+                new NoiseScalar[][]
+                {
+                    new NoiseScalar[] { i.X, i.Y, i.Z },
+                    new NoiseScalar[] { j.X, j.Y, j.Z },
+                    new NoiseScalar[] { k.X, k.Y, k.Z },
+                });
+            return new(transformed[0], transformed[1], transformed[2]);
+        }
+
+        /// <summary>
+        /// Stretches every two-dimensional noise function in <paramref name="original"/> along
+        /// its x and y axes.
+        /// </summary>
+        public static NoiseScalar Stretch(NoiseScalar original, NoiseScalar x, NoiseScalar y) =>
+            Transform(original, new(x, Zero), new(Zero, y));
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar)"/>
+        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseScalar x, NoiseScalar y) =>
+            Transform(original, new(x, Zero), new(Zero, y));
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar)"/>
+        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseScalar x, NoiseScalar y) =>
+            Transform(original, new(x, Zero), new(Zero, y));
+
+        /// <summary>
+        /// Stretches every two-dimensional noise function in <paramref name="original"/> by the
+        /// corresponding component of <paramref name="scale"/>.
+        /// </summary>
+        public static NoiseScalar Stretch(NoiseScalar original, NoiseVector2 scale) =>
+            Stretch(original, scale.X, scale.Y);
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector2)"/>
+        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseVector2 scale) =>
+            Stretch(original, scale.X, scale.Y);
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector2)"/>
+        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseVector2 scale) =>
+            Stretch(original, scale.X, scale.Y);
+
+        /// <summary>
+        /// Stretches every three-dimensional noise function in <paramref name="original"/> along
+        /// its x, y, and z axes.
+        /// </summary>
+        public static NoiseScalar Stretch(NoiseScalar original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
+            Transform(original, new(x, Zero, Zero), new(Zero, y, Zero), new(Zero, Zero, z));
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar, NoiseScalar)"/>
+        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
+            Transform(original, new(x, Zero, Zero), new(Zero, y, Zero), new(Zero, Zero, z));
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar, NoiseScalar)"/>
+        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
+            Transform(original, new(x, Zero, Zero), new(Zero, y, Zero), new(Zero, Zero, z));
+
+        /// <summary>
+        /// Stretches every three-dimensional noise function in <paramref name="original"/> by the
+        /// corresponding component of <paramref name="scale"/>.
+        /// </summary>
+        public static NoiseScalar Stretch(NoiseScalar original, NoiseVector3 scale) =>
+            Stretch(original, scale.X, scale.Y, scale.Z);
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector3)"/>
+        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseVector3 scale) =>
+            Stretch(original, scale.X, scale.Y, scale.Z);
+
+        /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector3)"/>
+        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseVector3 scale) =>
+            Stretch(original, scale.X, scale.Y, scale.Z);
+
+        static NoiseScalar[] Transform(NoiseScalar[] originals, NoiseScalar[][] basis)
+        {
+            Dictionary<NoiseNode, NoiseNode> clones = new();
+            NoiseScalar[] transformed = new NoiseScalar[originals.Length];
+            for (int outputIndex = 0; outputIndex < originals.Length; outputIndex++)
+                transformed[outputIndex] = Clone(originals[outputIndex]);
+            return transformed;
+
+            NoiseScalar Clone(NoiseScalar original)
+            {
+                NoiseNode originalNode = original.Node;
+                if (!clones.TryGetValue(originalNode, out NoiseNode? clone))
+                {
+                    clone = CloneNode(originalNode);
+                    clones.Add(originalNode, clone);
+                }
+                return clone.Channel(original.ChannelIndex);
+            }
+
+            NoiseNode CloneNode(NoiseNode original)
+            {
+                if (original.Type.IsNoise())
+                    return TransformNoise(original);
+
+                if (original.IsConstant)
+                    return new NoiseNode(original.Type, original.ConstantValues.ToArray());
+
+                NoiseScalar[] clonedInputs = new NoiseScalar[original.InputChannelCount];
+                for (int inputIndex = 0; inputIndex < clonedInputs.Length; inputIndex++)
+                    clonedInputs[inputIndex] = Clone(original.Inputs[inputIndex]);
+                return new NoiseNode(original.Type, clonedInputs);
+            }
+
+            NoiseNode TransformNoise(NoiseNode original)
+            {
+                if (original.InputChannelCount != basis.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot apply a {basis.Length}D transform to noise node type {original.Type}, " +
+                        $"which has {original.InputChannelCount} coordinate inputs.");
+                }
+
+                NoiseScalar[] remappedCoordinates = new NoiseScalar[basis.Length];
+                for (int outputAxis = 0; outputAxis < remappedCoordinates.Length; outputAxis++)
+                {
+                    NoiseScalar remapped = original.Inputs[0] * basis[0][outputAxis];
+                    for (int inputAxis = 1; inputAxis < basis.Length; inputAxis++)
+                        remapped += original.Inputs[inputAxis] * basis[inputAxis][outputAxis];
+                    remappedCoordinates[outputAxis] = remapped;
+                }
+                return new NoiseNode(original.Type, remappedCoordinates);
+            }
+        }
+
 
         static NoiseNode InlineConstantCommunative(NoiseNode node)
         {

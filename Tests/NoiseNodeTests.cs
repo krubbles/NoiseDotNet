@@ -17,6 +17,11 @@ namespace Tests
             2.8f, -2.2f, 1.1f, -0.35f, 3.4f, -1.6f, 0.55f, 2.25f,
         ];
 
+        static readonly float[] ZCoordinates =
+        [
+            1.4f, -0.6f, 2.3f, -1.75f, 0.2f, 3.1f, -2.4f, 0.9f,
+        ];
+
         [Test]
         public void CompiledNoiseVariesAcrossSamplePoints()
         {
@@ -141,6 +146,56 @@ namespace Tests
             ];
             for (int i = 0; i < actual.Length; i++)
                 AssertEqualEnough(expected[i], actual[i], $"FBM golden sample {i} changed.");
+        }
+
+        [Test]
+        public void TransformRemapsTwoDimensionalNoiseCoordinates()
+        {
+            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseScalar original = CreatePerlin2D(coordinates);
+            NoiseVector2 i = NoiseNode.Constant(2f, 3f);
+            NoiseVector2 j = NoiseNode.Constant(5f, 7f);
+
+            NoiseScalar transformed = NoiseNode.Transform(original, i, j);
+            NoiseScalar expected = CreatePerlin2D(new(
+                coordinates.X * i.X + coordinates.Y * j.X,
+                coordinates.X * i.Y + coordinates.Y * j.Y));
+
+            float[] actualValues = Evaluate(NoiseNodeByteCode.Compile(transformed), seed: 83);
+            float[] expectedValues = Evaluate(NoiseNodeByteCode.Compile(expected), seed: 83);
+            for (int sampleIndex = 0; sampleIndex < actualValues.Length; sampleIndex++)
+            {
+                AssertEqualEnough(
+                    expectedValues[sampleIndex],
+                    actualValues[sampleIndex],
+                    $"Transformed 2D sample {sampleIndex} was incorrect.");
+            }
+        }
+
+        [Test]
+        public void TransformRemapsThreeDimensionalNoiseCoordinates()
+        {
+            NoiseVector3 coordinates = CreateCoordinates3D();
+            NoiseScalar original = CreatePerlin3D(coordinates);
+            NoiseVector3 i = NoiseNode.Constant(2f, 3f, 5f);
+            NoiseVector3 j = NoiseNode.Constant(7f, 11f, 13f);
+            NoiseVector3 k = NoiseNode.Constant(17f, 19f, 23f);
+
+            NoiseScalar transformed = NoiseNode.Transform(original, i, j, k);
+            NoiseScalar expected = CreatePerlin3D(new(
+                coordinates.X * i.X + coordinates.Y * j.X + coordinates.Z * k.X,
+                coordinates.X * i.Y + coordinates.Y * j.Y + coordinates.Z * k.Y,
+                coordinates.X * i.Z + coordinates.Y * j.Z + coordinates.Z * k.Z));
+
+            float[] actualValues = Evaluate(NoiseNodeByteCode.Compile(transformed), seed: 89);
+            float[] expectedValues = Evaluate(NoiseNodeByteCode.Compile(expected), seed: 89);
+            for (int sampleIndex = 0; sampleIndex < actualValues.Length; sampleIndex++)
+            {
+                AssertEqualEnough(
+                    expectedValues[sampleIndex],
+                    actualValues[sampleIndex],
+                    $"Transformed 3D sample {sampleIndex} was incorrect.");
+            }
         }
 
         [Test]
@@ -305,8 +360,18 @@ namespace Tests
         static NoiseVector2 CreateCoordinates2D() =>
             new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
 
+        static NoiseVector3 CreateCoordinates3D() =>
+            new NoiseNode(NoiseNodeType.Coords3__NoIn__x_y_z, Array.Empty<NoiseScalar>()).AsVector3;
+
         static NoiseScalar CreatePerlin2D(NoiseVector2 coordinates) =>
             new NoiseNode(NoiseNodeType.Perlin2D_noise__x_y__noise, coordinates.X, coordinates.Y).AsScalar;
+
+        static NoiseScalar CreatePerlin3D(NoiseVector3 coordinates) =>
+            new NoiseNode(
+                NoiseNodeType.Perlin3D_noise__x_y_z__noise,
+                coordinates.X,
+                coordinates.Y,
+                coordinates.Z).AsScalar;
 
         static NoiseVector2 Scale(NoiseVector2 coordinates, float xFrequency, float yFrequency) =>
             new(
@@ -320,6 +385,8 @@ namespace Tests
             float[] registerSpace = new float[checked(info.RegisterCount * batchSize)];
             XCoordinates.CopyTo(registerSpace, 0);
             YCoordinates.CopyTo(registerSpace, batchSize);
+            if (info.InputCount == 3)
+                ZCoordinates.CopyTo(registerSpace, batchSize * 2);
 
             NoiseNodeByteCode.Evaluate(compiled.ByteCode, seed, registerSpace, batchSize);
             return registerSpace[..batchSize];
