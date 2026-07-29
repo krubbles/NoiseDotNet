@@ -387,6 +387,27 @@ public sealed class NoiseNode
         Lerp(a.Y, b.Y, t.Y),
         Lerp(a.Z, b.Z, t.Z));
 
+    /// <summary>
+    /// Returns the largest integer less than or equal to a scalar value.
+    /// </summary>
+    public static NoiseScalar Floor(NoiseScalar value) =>
+        new NoiseNode(NoiseNodeType.Floor__value__result, value).AsScalar;
+
+    /// <summary>
+    /// Applies <see cref="Floor(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector2 Floor(NoiseVector2 value) => new(
+        Floor(value.X),
+        Floor(value.Y));
+
+    /// <summary>
+    /// Applies <see cref="Floor(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector3 Floor(NoiseVector3 value) => new(
+        Floor(value.X),
+        Floor(value.Y),
+        Floor(value.Z));
+
     public static NoiseScalar Negate(NoiseScalar value) =>
         new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
 
@@ -568,6 +589,7 @@ public enum NoiseNodeType
     Pow__value_power__result,
     SmoothStep01__value__result,
     Lerp__a_b_t__result,
+    Floor__value__result,
 }
 
 public static class NoiseNodeTypeExtensions

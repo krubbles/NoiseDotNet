@@ -286,6 +286,13 @@ namespace NoiseDotNet
                             output0[i] = a[i] + (b[i] - a[i]) * t[i];
                         break;
                     }
+                case NoiseNodeType.Floor__value__result:
+                    {
+                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
+                        for (int i = 0; i < batchSize; i++)
+                            output0[i] = MathF.Floor(value[i]);
+                        break;
+                    }
                 case NoiseNodeType.Negate__value__negated:
                     {
                         Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);

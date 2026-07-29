@@ -237,6 +237,23 @@ namespace Tests
             Assert.That(componentFactors.Y.Node.Type, Is.EqualTo(NoiseNodeType.Lerp__a_b_t__result));
         }
 
+        [Test]
+        public void FloorRoundsScalarAndVectorValuesTowardNegativeInfinity()
+        {
+            // The coordinate set contains negative and positive fractional values, distinguishing
+            // floor from truncation and validating both sides of zero.
+            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseScalar floored = NoiseNode.Floor(coordinates.X);
+
+            float[] actual = Evaluate(NoiseNodeByteCode.Compile(floored), seed: 0);
+            for (int i = 0; i < XCoordinates.Length; i++)
+                AssertEqualEnough(MathF.Floor(XCoordinates[i]), actual[i], $"Floor sample {i} was incorrect.");
+
+            NoiseVector2 vectorResult = NoiseNode.Floor(coordinates);
+            Assert.That(vectorResult.X.Node.Type, Is.EqualTo(NoiseNodeType.Floor__value__result));
+            Assert.That(vectorResult.Y.Node.Type, Is.EqualTo(NoiseNodeType.Floor__value__result));
+        }
+
         static NoiseVector2 CreateCoordinates2D() =>
             new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
 
