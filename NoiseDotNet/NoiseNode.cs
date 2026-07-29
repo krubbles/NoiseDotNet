@@ -161,6 +161,16 @@ public sealed class NoiseNode
         ValidateIsRealNumber(_constantNotRealErrorMessage, "y", y),
         ValidateIsRealNumber(_constantNotRealErrorMessage, "z", z)).AsVector3;
 
+    /// <summary>
+    /// Constant scalar zero.
+    /// </summary>
+    public static readonly NoiseScalar Zero = Constant(0f);
+
+    /// <summary>
+    /// Constant scalar one.
+    /// </summary>
+    public static readonly NoiseScalar One = Constant(1f);
+
 
     static NoiseNode InlineConstantCommunative(NoiseNode node)
     {
@@ -408,6 +418,159 @@ public sealed class NoiseNode
         Floor(value.Y),
         Floor(value.Z));
 
+    /// <summary>
+    /// Returns the absolute value of a scalar.
+    /// </summary>
+    public static NoiseScalar Abs(NoiseScalar value) => Max(value, -value);
+
+    /// <summary>
+    /// Applies <see cref="Abs(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector2 Abs(NoiseVector2 value) => new(
+        Abs(value.X),
+        Abs(value.Y));
+
+    /// <summary>
+    /// Applies <see cref="Abs(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector3 Abs(NoiseVector3 value) => new(
+        Abs(value.X),
+        Abs(value.Y),
+        Abs(value.Z));
+
+    /// <summary>
+    /// Clamps a scalar between a minimum and maximum value.
+    /// </summary>
+    public static NoiseScalar Clamp(NoiseScalar value, NoiseScalar min, NoiseScalar max) =>
+        Min(Max(value, min), max);
+
+    /// <summary>
+    /// Clamps each component between the corresponding minimum and maximum components.
+    /// </summary>
+    public static NoiseVector2 Clamp(NoiseVector2 value, NoiseVector2 min, NoiseVector2 max) => new(
+        Clamp(value.X, min.X, max.X),
+        Clamp(value.Y, min.Y, max.Y));
+
+    /// <summary>
+    /// Clamps each component between the corresponding minimum and maximum components.
+    /// </summary>
+    public static NoiseVector3 Clamp(NoiseVector3 value, NoiseVector3 min, NoiseVector3 max) => new(
+        Clamp(value.X, min.X, max.X),
+        Clamp(value.Y, min.Y, max.Y),
+        Clamp(value.Z, min.Z, max.Z));
+
+    /// <summary>
+    /// Clamps every vector component between the same scalar minimum and maximum.
+    /// </summary>
+    public static NoiseVector2 Clamp(NoiseVector2 value, NoiseScalar min, NoiseScalar max) => new(
+        Clamp(value.X, min, max),
+        Clamp(value.Y, min, max));
+
+    /// <summary>
+    /// Clamps every vector component between the same scalar minimum and maximum.
+    /// </summary>
+    public static NoiseVector3 Clamp(NoiseVector3 value, NoiseScalar min, NoiseScalar max) => new(
+        Clamp(value.X, min, max),
+        Clamp(value.Y, min, max),
+        Clamp(value.Z, min, max));
+
+    /// <summary>
+    /// Clamps a scalar to [0, 1].
+    /// </summary>
+    public static NoiseScalar Saturate(NoiseScalar value) =>
+        Clamp(value, Zero, One);
+
+    /// <summary>
+    /// Applies <see cref="Saturate(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector2 Saturate(NoiseVector2 value) => new(
+        Saturate(value.X),
+        Saturate(value.Y));
+
+    /// <summary>
+    /// Applies <see cref="Saturate(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector3 Saturate(NoiseVector3 value) => new(
+        Saturate(value.X),
+        Saturate(value.Y),
+        Saturate(value.Z));
+
+    /// <summary>
+    /// Returns the fractional part of a scalar in the range [0, 1).
+    /// </summary>
+    public static NoiseScalar Fract(NoiseScalar value) => value - Floor(value);
+
+    /// <summary>
+    /// Applies <see cref="Fract(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector2 Fract(NoiseVector2 value) => new(
+        Fract(value.X),
+        Fract(value.Y));
+
+    /// <summary>
+    /// Applies <see cref="Fract(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector3 Fract(NoiseVector3 value) => new(
+        Fract(value.X),
+        Fract(value.Y),
+        Fract(value.Z));
+
+    /// <summary>
+    /// Returns value - modulus * floor(value / modulus).
+    /// </summary>
+    public static NoiseScalar Mod(NoiseScalar value, NoiseScalar modulus) =>
+        value - modulus * Floor(value / modulus);
+
+    /// <summary>
+    /// Applies <see cref="Mod(NoiseScalar, NoiseScalar)"/> component-wise.
+    /// </summary>
+    public static NoiseVector2 Mod(NoiseVector2 value, NoiseVector2 modulus) => new(
+        Mod(value.X, modulus.X),
+        Mod(value.Y, modulus.Y));
+
+    /// <summary>
+    /// Applies <see cref="Mod(NoiseScalar, NoiseScalar)"/> component-wise.
+    /// </summary>
+    public static NoiseVector3 Mod(NoiseVector3 value, NoiseVector3 modulus) => new(
+        Mod(value.X, modulus.X),
+        Mod(value.Y, modulus.Y),
+        Mod(value.Z, modulus.Z));
+
+    /// <summary>
+    /// Applies the same scalar modulus to every vector component.
+    /// </summary>
+    public static NoiseVector2 Mod(NoiseVector2 value, NoiseScalar modulus) => new(
+        Mod(value.X, modulus),
+        Mod(value.Y, modulus));
+
+    /// <summary>
+    /// Applies the same scalar modulus to every vector component.
+    /// </summary>
+    public static NoiseVector3 Mod(NoiseVector3 value, NoiseScalar modulus) => new(
+        Mod(value.X, modulus),
+        Mod(value.Y, modulus),
+        Mod(value.Z, modulus));
+
+    /// <summary>
+    /// Returns e raised to a scalar power.
+    /// </summary>
+    public static NoiseScalar Exp(NoiseScalar value) => Pow(Constant(MathF.E), value);
+
+    /// <summary>
+    /// Applies <see cref="Exp(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector2 Exp(NoiseVector2 value) => new(
+        Exp(value.X),
+        Exp(value.Y));
+
+    /// <summary>
+    /// Applies <see cref="Exp(NoiseScalar)"/> to each component.
+    /// </summary>
+    public static NoiseVector3 Exp(NoiseVector3 value) => new(
+        Exp(value.X),
+        Exp(value.Y),
+        Exp(value.Z));
+
     public static NoiseScalar Negate(NoiseScalar value) =>
         new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
 
@@ -477,7 +640,7 @@ public sealed class NoiseNode
 }
 
 /// <summary>
-/// <para>References a specific channel from the output of a noise node.</para>
+/// <para>A scalar noise expression.</para>
 /// </summary>
 public readonly struct NoiseScalar : IEquatable<NoiseScalar>
 {
@@ -497,14 +660,16 @@ public readonly struct NoiseScalar : IEquatable<NoiseScalar>
 
     public static implicit operator NoiseScalar((NoiseNode node, int channelIndex) pair) => new(pair.node, pair.channelIndex);
 
-    public bool Equals(NoiseScalar other) => Node == other.Node && ChannelIndex == other.ChannelIndex;
-    public override bool Equals(object? obj) => obj is NoiseScalar other && Equals(other);
-    public override int GetHashCode() => HashCode.Combine(Node, ChannelIndex);
+
     public static NoiseScalar operator +(NoiseScalar a, NoiseScalar b) => NoiseNode.Add(a, b);
     public static NoiseScalar operator -(NoiseScalar value) => NoiseNode.Negate(value);
     public static NoiseScalar operator -(NoiseScalar a, NoiseScalar b) => NoiseNode.Subtract(a, b);
     public static NoiseScalar operator *(NoiseScalar a, NoiseScalar b) => NoiseNode.Multiply(a, b);
     public static NoiseScalar operator /(NoiseScalar a, NoiseScalar b) => NoiseNode.Divide(a, b);
+
+    public bool Equals(NoiseScalar other) => Node == other.Node && ChannelIndex == other.ChannelIndex;
+    public override bool Equals(object? obj) => obj is NoiseScalar other && Equals(other);
+    public override int GetHashCode() => HashCode.Combine(Node, ChannelIndex);
     public static bool operator ==(NoiseScalar a, NoiseScalar b) => a.Equals(b);
     public static bool operator !=(NoiseScalar a, NoiseScalar b) => !a.Equals(b);
 }

@@ -254,6 +254,54 @@ namespace Tests
             Assert.That(vectorResult.Y.Node.Type, Is.EqualTo(NoiseNodeType.Floor__value__result));
         }
 
+        [Test]
+        public void ComposedMathUtilitiesEvaluateWithoutDedicatedOpcodes()
+        {
+            // Each utility is built exclusively from existing node operations. The samples span
+            // negative and positive values to exercise clamp, fractional, and modulus behavior.
+            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseScalar modulus = NoiseNode.Constant(1.25f);
+            (NoiseScalar Node, Func<float, float> Expected, string Name)[] cases =
+            [
+                (NoiseNode.Abs(coordinates.X), MathF.Abs, "Abs"),
+                (
+                    NoiseNode.Clamp(coordinates.X, NoiseNode.Constant(-1f), NoiseNode.Constant(1f)),
+                    value => Math.Clamp(value, -1f, 1f),
+                    "Clamp"
+                ),
+                (NoiseNode.Saturate(coordinates.X), value => Math.Clamp(value, 0f, 1f), "Saturate"),
+                (NoiseNode.Fract(coordinates.X), value => value - MathF.Floor(value), "Fract"),
+                (
+                    NoiseNode.Mod(coordinates.X, modulus),
+                    value => value - 1.25f * MathF.Floor(value / 1.25f),
+                    "Mod"
+                ),
+                (NoiseNode.Exp(coordinates.X), MathF.Exp, "Exp"),
+            ];
+
+            foreach ((NoiseScalar node, Func<float, float> expected, string name) in cases)
+            {
+                float[] actual = Evaluate(NoiseNodeByteCode.Compile(node), seed: 0);
+                for (int i = 0; i < XCoordinates.Length; i++)
+                    AssertEqualEnough(expected(XCoordinates[i]), actual[i], $"{name} sample {i} was incorrect.");
+            }
+
+            // The root types demonstrate that these helpers expand to existing instructions.
+            Assert.That(NoiseNode.Abs(coordinates.X).Node.Type, Is.EqualTo(NoiseNodeType.Max__a_b__max));
+            Assert.That(NoiseNode.Clamp(coordinates.X, modulus, modulus).Node.Type, Is.EqualTo(NoiseNodeType.Min__a_b__min));
+            Assert.That(NoiseNode.Fract(coordinates.X).Node.Type, Is.EqualTo(NoiseNodeType.Add__a_b__sum));
+            Assert.That(NoiseNode.Mod(coordinates.X, modulus).Node.Type, Is.EqualTo(NoiseNodeType.Add__a_b__sum));
+            Assert.That(NoiseNode.Exp(coordinates.X).Node.Type, Is.EqualTo(NoiseNodeType.Pow__value_power__result));
+
+            NoiseScalar saturatedScalar = NoiseNode.Saturate(coordinates.X);
+            Assert.That(saturatedScalar.Node.Inputs[1].Node, Is.SameAs(NoiseNode.One.Node));
+            Assert.That(saturatedScalar.Node.Inputs[0].Node.Inputs[1].Node, Is.SameAs(NoiseNode.Zero.Node));
+
+            NoiseVector2 vector = NoiseNode.Saturate(coordinates);
+            Assert.That(vector.X.Node.Type, Is.EqualTo(NoiseNodeType.Min__a_b__min));
+            Assert.That(vector.Y.Node.Type, Is.EqualTo(NoiseNodeType.Min__a_b__min));
+        }
+
         static NoiseVector2 CreateCoordinates2D() =>
             new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
 
