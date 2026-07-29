@@ -143,6 +143,31 @@ namespace Tests
                 AssertEqualEnough(expected[i], actual[i], $"FBM golden sample {i} changed.");
         }
 
+        [Test]
+        public void MinAndMaxEvaluateComponentWise()
+        {
+            // Scalar operations select the expected operand for every sample, while vector
+            // overloads construct one independent operation per component.
+            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseScalar minimum = NoiseNode.Min(coordinates.X, NoiseNode.Constant(0.5f));
+            NoiseScalar maximum = NoiseNode.Max(coordinates.Y, NoiseNode.Constant(-0.25f));
+
+            float[] minimumValues = Evaluate(NoiseNodeByteCode.Compile(minimum), seed: 0);
+            float[] maximumValues = Evaluate(NoiseNodeByteCode.Compile(maximum), seed: 0);
+            for (int i = 0; i < XCoordinates.Length; i++)
+            {
+                AssertEqualEnough(MathF.Min(XCoordinates[i], 0.5f), minimumValues[i], $"Minimum sample {i} was incorrect.");
+                AssertEqualEnough(MathF.Max(YCoordinates[i], -0.25f), maximumValues[i], $"Maximum sample {i} was incorrect.");
+            }
+
+            NoiseVector2 vectorMinimum = NoiseNode.Min(coordinates, NoiseNode.Constant(1f, 2f));
+            NoiseVector2 vectorMaximum = NoiseNode.Max(coordinates, NoiseNode.Constant(1f, 2f));
+            Assert.That(vectorMinimum.X.Node.Type, Is.EqualTo(NoiseNodeType.Min__a_b__min));
+            Assert.That(vectorMinimum.Y.Node.Type, Is.EqualTo(NoiseNodeType.Min__a_b__min));
+            Assert.That(vectorMaximum.X.Node.Type, Is.EqualTo(NoiseNodeType.Max__a_b__max));
+            Assert.That(vectorMaximum.Y.Node.Type, Is.EqualTo(NoiseNodeType.Max__a_b__max));
+        }
+
         static NoiseVector2 CreateCoordinates2D() =>
             new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
 

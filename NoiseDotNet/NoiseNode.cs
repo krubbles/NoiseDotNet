@@ -243,6 +243,56 @@ public sealed class NoiseNode
         Add(a.Y, b.Y),
         Add(a.Z, b.Z));
 
+    /// <summary>
+    /// Returns the smaller of two scalar values.
+    /// </summary>
+    public static NoiseScalar Min(NoiseScalar a, NoiseScalar b)
+    {
+        NoiseNode result = new(NoiseNodeType.Min__a_b__min, a, b);
+        result = InlineConstantCommunative(result);
+        return result.AsScalar;
+    }
+
+    /// <summary>
+    /// Returns the component-wise minimum of two vectors.
+    /// </summary>
+    public static NoiseVector2 Min(NoiseVector2 a, NoiseVector2 b) => new(
+        Min(a.X, b.X),
+        Min(a.Y, b.Y));
+
+    /// <summary>
+    /// Returns the component-wise minimum of two vectors.
+    /// </summary>
+    public static NoiseVector3 Min(NoiseVector3 a, NoiseVector3 b) => new(
+        Min(a.X, b.X),
+        Min(a.Y, b.Y),
+        Min(a.Z, b.Z));
+
+    /// <summary>
+    /// Returns the larger of two scalar values.
+    /// </summary>
+    public static NoiseScalar Max(NoiseScalar a, NoiseScalar b)
+    {
+        NoiseNode result = new(NoiseNodeType.Max__a_b__max, a, b);
+        result = InlineConstantCommunative(result);
+        return result.AsScalar;
+    }
+
+    /// <summary>
+    /// Returns the component-wise maximum of two vectors.
+    /// </summary>
+    public static NoiseVector2 Max(NoiseVector2 a, NoiseVector2 b) => new(
+        Max(a.X, b.X),
+        Max(a.Y, b.Y));
+
+    /// <summary>
+    /// Returns the component-wise maximum of two vectors.
+    /// </summary>
+    public static NoiseVector3 Max(NoiseVector3 a, NoiseVector3 b) => new(
+        Max(a.X, b.X),
+        Max(a.Y, b.Y),
+        Max(a.Z, b.Z));
+
     public static NoiseScalar Negate(NoiseScalar value) =>
         new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
 
@@ -419,6 +469,8 @@ public enum NoiseNodeType
     Perlin3D_noise__x_y_z__noise,
     Cellular2_noise__x_y__center_edge,
     Cellular3_noise__x_y_z__center_edge,
+    Min__a_b__min,
+    Max__a_b__max,
 }
 
 public static class NoiseNodeTypeExtensions

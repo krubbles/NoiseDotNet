@@ -243,6 +243,22 @@ namespace NoiseDotNet
                             output0[i] = a[i] + b[i];
                         break;
                     }
+                case NoiseNodeType.Min__a_b__min:
+                    {
+                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
+                        for (int i = 0; i < batchSize; i++)
+                            output0[i] = MathF.Min(a[i], b[i]);
+                        break;
+                    }
+                case NoiseNodeType.Max__a_b__max:
+                    {
+                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
+                        for (int i = 0; i < batchSize; i++)
+                            output0[i] = MathF.Max(a[i], b[i]);
+                        break;
+                    }
                 case NoiseNodeType.Negate__value__negated:
                     {
                         Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
