@@ -194,7 +194,7 @@ namespace Tests
             // The fixed coordinate set includes values below zero, inside the unit interval,
             // and above one, validating both endpoint clamping and the smoothstep polynomial.
             NoiseVector2 coordinates = CreateCoordinates2D();
-            NoiseScalar smoothed = NoiseNode.SmoothStep01(coordinates.X);
+            NoiseScalar smoothed = NoiseNode.SmoothStep(coordinates.X);
 
             float[] actual = Evaluate(NoiseNodeByteCode.Compile(smoothed), seed: 0);
             for (int i = 0; i < XCoordinates.Length; i++)
@@ -204,9 +204,37 @@ namespace Tests
                 AssertEqualEnough(expected, actual[i], $"Smoothstep sample {i} was incorrect.");
             }
 
-            NoiseVector2 vectorResult = NoiseNode.SmoothStep01(coordinates);
+            NoiseVector2 vectorResult = NoiseNode.SmoothStep(coordinates);
             Assert.That(vectorResult.X.Node.Type, Is.EqualTo(NoiseNodeType.SmoothStep01__value__result));
             Assert.That(vectorResult.Y.Node.Type, Is.EqualTo(NoiseNodeType.SmoothStep01__value__result));
+        }
+
+        [Test]
+        public void LerpInterpolatesAndExtrapolatesScalarAndVectorValues()
+        {
+            // Using the X coordinate as t covers values below zero, between zero and one,
+            // and above one, verifying that the native operation intentionally remains unclamped.
+            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseScalar interpolated = NoiseNode.Lerp(
+                NoiseNode.Constant(-2f),
+                NoiseNode.Constant(6f),
+                coordinates.X);
+
+            float[] actual = Evaluate(NoiseNodeByteCode.Compile(interpolated), seed: 0);
+            for (int i = 0; i < XCoordinates.Length; i++)
+            {
+                float expected = -2f + (6f - -2f) * XCoordinates[i];
+                AssertEqualEnough(expected, actual[i], $"Lerp sample {i} was incorrect.");
+            }
+
+            NoiseVector2 start = NoiseNode.Constant(-2f, 4f);
+            NoiseVector2 end = NoiseNode.Constant(6f, 8f);
+            NoiseVector2 sharedFactor = NoiseNode.Lerp(start, end, coordinates.X);
+            NoiseVector2 componentFactors = NoiseNode.Lerp(start, end, coordinates);
+            Assert.That(sharedFactor.X.Node.Type, Is.EqualTo(NoiseNodeType.Lerp__a_b_t__result));
+            Assert.That(sharedFactor.Y.Node.Type, Is.EqualTo(NoiseNodeType.Lerp__a_b_t__result));
+            Assert.That(componentFactors.X.Node.Type, Is.EqualTo(NoiseNodeType.Lerp__a_b_t__result));
+            Assert.That(componentFactors.Y.Node.Type, Is.EqualTo(NoiseNodeType.Lerp__a_b_t__result));
         }
 
         static NoiseVector2 CreateCoordinates2D() =>

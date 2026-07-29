@@ -336,19 +336,56 @@ public sealed class NoiseNode
         new NoiseNode(NoiseNodeType.SmoothStep01__value__result, value).AsScalar;
 
     /// <summary>
-    /// Applies <see cref="SmoothStep01(NoiseScalar)"/> to each component.
+    /// Applies <see cref="SmoothStep(NoiseScalar)"/> to each component.
     /// </summary>
     public static NoiseVector2 SmoothStep(NoiseVector2 value) => new(
         SmoothStep(value.X),
         SmoothStep(value.Y));
 
     /// <summary>
-    /// Applies <see cref="SmoothStep01(NoiseScalar)"/> to each component.
+    /// Applies <see cref="SmoothStep(NoiseScalar)"/> to each component.
     /// </summary>
     public static NoiseVector3 SmoothStep(NoiseVector3 value) => new(
         SmoothStep(value.X),
         SmoothStep(value.Y),
         SmoothStep(value.Z));
+
+    /// <summary>
+    /// Linearly interpolates from <paramref name="a"/> to <paramref name="b"/> by
+    /// <paramref name="t"/>. The interpolation factor is not clamped.
+    /// </summary>
+    public static NoiseScalar Lerp(NoiseScalar a, NoiseScalar b, NoiseScalar t) =>
+        new NoiseNode(NoiseNodeType.Lerp__a_b_t__result, a, b, t).AsScalar;
+
+    /// <summary>
+    /// Component-wise linear interpolation using one interpolation factor.
+    /// </summary>
+    public static NoiseVector2 Lerp(NoiseVector2 a, NoiseVector2 b, NoiseScalar t) => new(
+        Lerp(a.X, b.X, t),
+        Lerp(a.Y, b.Y, t));
+
+    /// <summary>
+    /// Component-wise linear interpolation using one interpolation factor.
+    /// </summary>
+    public static NoiseVector3 Lerp(NoiseVector3 a, NoiseVector3 b, NoiseScalar t) => new(
+        Lerp(a.X, b.X, t),
+        Lerp(a.Y, b.Y, t),
+        Lerp(a.Z, b.Z, t));
+
+    /// <summary>
+    /// Component-wise linear interpolation using a separate factor for each component.
+    /// </summary>
+    public static NoiseVector2 Lerp(NoiseVector2 a, NoiseVector2 b, NoiseVector2 t) => new(
+        Lerp(a.X, b.X, t.X),
+        Lerp(a.Y, b.Y, t.Y));
+
+    /// <summary>
+    /// Component-wise linear interpolation using a separate factor for each component.
+    /// </summary>
+    public static NoiseVector3 Lerp(NoiseVector3 a, NoiseVector3 b, NoiseVector3 t) => new(
+        Lerp(a.X, b.X, t.X),
+        Lerp(a.Y, b.Y, t.Y),
+        Lerp(a.Z, b.Z, t.Z));
 
     public static NoiseScalar Negate(NoiseScalar value) =>
         new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
@@ -530,6 +567,7 @@ public enum NoiseNodeType
     Max__a_b__max,
     Pow__value_power__result,
     SmoothStep01__value__result,
+    Lerp__a_b_t__result,
 }
 
 public static class NoiseNodeTypeExtensions

@@ -277,6 +277,15 @@ namespace NoiseDotNet
                         }
                         break;
                     }
+                case NoiseNodeType.Lerp__a_b_t__result:
+                    {
+                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
+                        Span<float> t = GetRegister(registerSpace, inputs[2], batchSize);
+                        for (int i = 0; i < batchSize; i++)
+                            output0[i] = a[i] + (b[i] - a[i]) * t[i];
+                        break;
+                    }
                 case NoiseNodeType.Negate__value__negated:
                     {
                         Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
