@@ -46,6 +46,39 @@ namespace NoiseDotNet
         /// </summary>
         public static readonly NoiseScalar One = Constant(1f);
 
+        /// <summary>
+        /// One-dimensional coordinate input.
+        /// </summary>
+        public static readonly NoiseScalar X =
+            new NoiseNode(NoiseNodeType.Coords1__NoIn__x, Array.Empty<NoiseScalar>()).AsScalar;
+
+        /// <summary>
+        /// Two-dimensional coordinate inputs.
+        /// </summary>
+        public static readonly NoiseVector2 XY =
+            new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
+
+        /// <summary>
+        /// Three-dimensional coordinate inputs.
+        /// </summary>
+        public static readonly NoiseVector3 XYZ =
+            new NoiseNode(NoiseNodeType.Coords3__NoIn__x_y_z, Array.Empty<NoiseScalar>()).AsVector3;
+
+        /// <summary>
+        /// Returns the one-dimensional coordinate input multiplied by a frequency scale.
+        /// </summary>
+        public static NoiseScalar Coordinates(NoiseScalar frequencyScale) => X * frequencyScale;
+
+        /// <summary>
+        /// Returns the two-dimensional coordinate inputs multiplied component-wise by frequency scales.
+        /// </summary>
+        public static NoiseVector2 Coordinates(NoiseVector2 frequencyScales) => XY * frequencyScales;
+
+        /// <summary>
+        /// Returns the three-dimensional coordinate inputs multiplied component-wise by frequency scales.
+        /// </summary>
+        public static NoiseVector3 Coordinates(NoiseVector3 frequencyScales) => XYZ * frequencyScales;
+
 
         static NoiseNode InlineConstantCommunative(NoiseNode node)
         {
