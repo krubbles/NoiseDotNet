@@ -1,3 +1,7 @@
+using System.Runtime.CompilerServices;
+
+namespace NoiseDotNet
+{
     /// <summary>
     /// Stateful NoiseNode compiler.
     /// </summary>
@@ -101,26 +105,17 @@
         NoiseScalar RemoveConstantScale(NoiseScalar input, out float frequency)
         {
             frequency = 1f;
-            NoiseScalar current = input;
-            while (current.Node.Type == NoiseNodeType.Multiply__a_b__product)
-            {
-                ReadOnlySpan<NoiseScalar> multiplyInputs = current.Node.Inputs;
-                if (TryGetConstant(multiplyInputs[0], out float leftConstant))
-                {
-                    frequency *= leftConstant;
-                    current = multiplyInputs[1];
-                }
-                else if (TryGetConstant(multiplyInputs[1], out float rightConstant))
-                {
-                    frequency *= rightConstant;
-                    current = multiplyInputs[0];
-                }
-                else
-                {
-                    break;
-                }
-            }
-            return current;
+            if (input.Node.Type != NoiseNodeType.Multiply__a_b__product)
+                return input;
+
+            ReadOnlySpan<NoiseScalar> multiplyInputs = input.Node.Inputs;
+            if (TryGetConstant(multiplyInputs[0], out frequency))
+                return multiplyInputs[1];
+            if (TryGetConstant(multiplyInputs[1], out frequency))
+                return multiplyInputs[0];
+
+            frequency = 1f;
+            return input;
         }
 
         static bool TryGetConstant(NoiseScalar scalar, out float value)
@@ -626,3 +621,4 @@
                 HashCode.Combine(RuntimeHelpers.GetHashCode(Node), Channel);
         }
     }
+}
