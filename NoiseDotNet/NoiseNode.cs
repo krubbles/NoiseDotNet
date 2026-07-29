@@ -9,20 +9,18 @@ namespace NoiseDotNet
     {
         public NoiseNodeType Type { get; }
 
-
-        readonly float[] _constantValues;
-
         /// <summary>
         /// ConstantValues[i] = the value of the i-th channel for a constant noise node. Only valid for constant noise nodes, otherwise empty.
         /// </summary>
         public ReadOnlySpan<float> ConstantValues => _constantValues.AsSpan();
+        readonly float[] _constantValues;
 
-        readonly NoiseScalar[] _inputs;
 
         /// <summary>
         /// Inputs[i] = the i-th input channel for a noise node. Only valid for noise nodes with inputs, otherwise empty.
         /// </summary>
         public ReadOnlySpan<NoiseScalar> Inputs => _inputs.AsSpan();
+        readonly NoiseScalar[] _inputs;
 
         /// <summary>
         /// Private constructor for a noise node with inputs. Player facing API uses static functions.
@@ -42,7 +40,6 @@ namespace NoiseDotNet
             }
         }
 
-
         /// <summary>
         /// Private constructor for a constant noise node Player facing API uses static functions.
         /// </summary>
@@ -60,8 +57,6 @@ namespace NoiseDotNet
                     $"received {_constantValues.Length} constant values, but expected {type.GetOutputCount()}.");
             }
         }
-
-
 
         /// <summary>
         /// Returns whether this node is a constant node.
@@ -208,14 +203,14 @@ namespace NoiseDotNet
         Constant1__NoIn__x,
         Constant2__NoIn__x_y,
         Constant3__NoIn__x_y_z,
-        Add__a_b__sum,
-        Negate__value__negated,
-        Multiply__a_b__product,
-        Inverse__value__inverse,
         Perlin2D_noise__x_y__noise,
         Perlin3D_noise__x_y_z__noise,
         Cellular2_noise__x_y__center_edge,
         Cellular3_noise__x_y_z__center_edge,
+        Add__a_b__sum,
+        Negate__value__negated,
+        Multiply__a_b__product,
+        Inverse__value__inverse,
         Min__a_b__min,
         Max__a_b__max,
         Pow__value_power__result,
@@ -224,6 +219,9 @@ namespace NoiseDotNet
         Floor__value__result,
     }
 
+    /// <summary>
+    /// Extention methods for <see cref="NoiseNodeType"/> that allow you to query metadata about the node type.
+    /// </summary>
     public static class NoiseNodeTypeExtensions
     {
         readonly struct NoiseNodeTypeMetadata
