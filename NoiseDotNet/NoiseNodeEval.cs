@@ -109,10 +109,26 @@ namespace NoiseDotNet
         /// <param name="outputs">Output channels, in the order they should appear in the output registers.</param>
         public static CompiledNoiseNode Compile(params NoiseScalar[] outputs)
         {
+            ValidateOutputs(outputs);
+            return new NoiseNodeCompiler(outputs).Compile();
+        }
+
+        /// <summary>
+        /// Returns the per-node seeds that would be assigned when compiling the graphs needed by
+        /// the ordered output channels.
+        /// </summary>
+        /// <param name="outputs">Output channels whose graphs should be inspected.</param>
+        public static Dictionary<NoiseNode, int> GetNoiseSeeds(params NoiseScalar[] outputs)
+        {
+            ValidateOutputs(outputs);
+            return new NoiseNodeCompiler(outputs).GetNoiseSeeds();
+        }
+
+        static void ValidateOutputs(NoiseScalar[] outputs)
+        {
             ArgumentNullException.ThrowIfNull(outputs);
             if (outputs.Length == 0)
                 throw new ArgumentException("At least one output channel must be provided.", nameof(outputs));
-            return new NoiseNodeCompiler((NoiseScalar[])outputs.Clone()).Compile();
         }
 
         /// <summary>

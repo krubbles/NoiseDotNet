@@ -23,6 +23,7 @@ namespace NoiseDotNet
         int _inputCount;
         int _nextRegister;
         int _maxRegisterCount;
+        bool _graphInitialized;
 
         public NoiseNodeCompiler(NoiseScalar[] outputs)
         {
@@ -31,16 +32,8 @@ namespace NoiseDotNet
 
         public CompiledNoiseNode Compile()
         {
-            for (int outputIndex = 0; outputIndex < _outputs.Length; outputIndex++)
-            {
-                NoiseScalar output = _outputs[outputIndex];
-                ValidateOutput(output, outputIndex);
-                AddUse(new ValueKey(output.Node, output.ChannelIndex));
-                Visit(output.Node);
-            }
-
+            InitializeGraph();
             InitializeLeafRegisters();
-            AssignNoiseSeeds();
             CompileDependencies(_outputs);
             MaterializeOutputs();
 
@@ -61,6 +54,29 @@ namespace NoiseDotNet
                 NoiseNodeByteCode.Append(bytecode, constant);
             bytecode.AddRange(_instructions);
             return new CompiledNoiseNode(bytecode.ToArray());
+        }
+
+        public Dictionary<NoiseNode, int> GetNoiseSeeds()
+        {
+            InitializeGraph();
+            return new Dictionary<NoiseNode, int>(_noiseSeeds);
+        }
+
+        void InitializeGraph()
+        {
+            if (_graphInitialized)
+                return;
+
+            for (int outputIndex = 0; outputIndex < _outputs.Length; outputIndex++)
+            {
+                NoiseScalar output = _outputs[outputIndex];
+                ValidateOutput(output, outputIndex);
+                AddUse(new ValueKey(output.Node, output.ChannelIndex));
+                Visit(output.Node);
+            }
+
+            AssignNoiseSeeds();
+            _graphInitialized = true;
         }
 
         void Visit(NoiseNode node)
