@@ -1,7 +1,13 @@
 namespace NoiseDotNet
 {
-    public static class NoiseGraph
+    /// <summary>
+    /// API for constructing and evaluating noise graphs.
+    /// </summary>
+    public static partial class NoiseGraph
     {
+        // This file includes all the public functions
+        // related to constructing noise graphs.
+
         /// <summary>
         /// Checks if a number is real, throwing an exception if it is infinity or NaN.
         /// </summary>

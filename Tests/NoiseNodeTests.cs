@@ -210,7 +210,7 @@ namespace Tests
             float[] doubledOutput = new float[XCoordinates.Length];
             float[] offsetOutput = new float[XCoordinates.Length];
 
-            NoiseGraphByteCodeEval.Evaluate2D(
+            NoiseGraph.Evaluate2D(
                 noise,
                 negated,
                 doubled,
@@ -246,7 +246,7 @@ namespace Tests
             float[] doubledOutput = new float[XCoordinates.Length];
             float[] offsetOutput = new float[XCoordinates.Length];
 
-            NoiseGraphByteCodeEval.Evaluate3D(
+            NoiseGraph.Evaluate3D(
                 noise,
                 negated,
                 doubled,
@@ -428,6 +428,20 @@ namespace Tests
             NoiseVector2 vector = NoiseGraph.Saturate(coordinates);
             Assert.That(vector.X.Node.Type, Is.EqualTo(NoiseNodeType.Min__a_b__min));
             Assert.That(vector.Y.Node.Type, Is.EqualTo(NoiseNodeType.Min__a_b__min));
+        }
+
+        [Test]
+        public void Evaluate2DProcessesLargeBuffersInCacheSizedBlocks()
+        {
+            const int sampleCount = 2051;
+            float[] xCoords = Enumerable.Range(0, sampleCount).Select(index => index - 1025.5f).ToArray();
+            float[] yCoords = new float[sampleCount];
+            float[] output = new float[sampleCount];
+
+            NoiseGraph.Evaluate2D(NoiseGraph.X * NoiseGraph.Constant(2f), xCoords, yCoords, output);
+
+            for (int index = 0; index < sampleCount; index++)
+                AssertEqualEnough(xCoords[index] * 2f, output[index], $"Block sample {index} was incorrect.");
         }
 
         static NoiseVector2 CreateCoordinates2D() =>
