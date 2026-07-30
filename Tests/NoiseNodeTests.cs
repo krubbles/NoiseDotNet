@@ -27,7 +27,7 @@ namespace Tests
         {
             // A compiled noise instruction must read the coordinate registers rather than
             // accidentally producing one constant value for the whole batch.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseGraphByteCode compiled = NoiseGraphByteCodeCompiler.Compile(CreatePerlin2D(coordinates));
 
             float[] actual = Evaluate(compiled, seed: 17);
@@ -43,7 +43,7 @@ namespace Tests
         {
             // Compiling the same graph twice should still allow the caller-provided
             // evaluation seed to select different deterministic noise functions.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar noise = CreatePerlin2D(coordinates);
             NoiseGraphByteCode firstCompilation = NoiseGraphByteCodeCompiler.Compile(noise);
             NoiseGraphByteCode secondCompilation = NoiseGraphByteCodeCompiler.Compile(noise);
@@ -59,7 +59,7 @@ namespace Tests
         {
             // Both operands reference the same NoiseGraph instance, so the compiler must assign
             // one internal seed and evaluate exactly the same function for both operands.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar noise = CreatePerlin2D(coordinates);
             NoiseGraphByteCode doubledGraph = NoiseGraphByteCodeCompiler.Compile(noise + noise);
             NoiseGraphByteCode baseGraph = NoiseGraphByteCodeCompiler.Compile(noise);
@@ -77,7 +77,7 @@ namespace Tests
             // Structurally identical but separately allocated noise nodes must receive different
             // internal seeds. Re-evaluating each node alone with its combined-graph seed lets us
             // verify both the sum and that it is not merely either function doubled.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar leftNoise = CreatePerlin2D(coordinates);
             NoiseScalar rightNoise = CreatePerlin2D(coordinates);
             NoiseScalar sum = leftNoise + rightNoise;
@@ -105,10 +105,9 @@ namespace Tests
             // Build three FBM octaves with increasing coordinate frequencies and decreasing
             // amplitudes. This exercises folded frequency metadata and the accumulate form used
             // when a noise instruction is added directly into an existing partial result.
-            NoiseVector2 coordinates = CreateCoordinates2D();
-            NoiseScalar octave0 = CreatePerlin2D(Scale(coordinates, 0.5f, 0.75f));
-            NoiseScalar octave1 = CreatePerlin2D(Scale(coordinates, 1f, 1.5f));
-            NoiseScalar octave2 = CreatePerlin2D(Scale(coordinates, 2f, 3f));
+            NoiseScalar octave0 = CreatePerlin2D(NoiseGraph.Coordinates(NoiseGraph.Constant(0.5f, 0.75f)));
+            NoiseScalar octave1 = CreatePerlin2D(NoiseGraph.Coordinates(NoiseGraph.Constant(1f, 1.5f)));
+            NoiseScalar octave2 = CreatePerlin2D(NoiseGraph.Coordinates(NoiseGraph.Constant(2f, 3f)));
             NoiseScalar fbm = octave0 + octave1 * NoiseGraph.Constant(0.5f) +
                               octave2 * NoiseGraph.Constant(0.25f);
             Dictionary<NoiseNode, int> seeds = NoiseGraphByteCodeCompiler.GetNoiseSeeds(fbm);
@@ -151,7 +150,7 @@ namespace Tests
         [Test]
         public void TransformRemapsTwoDimensionalNoiseCoordinates()
         {
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar original = CreatePerlin2D(coordinates);
             NoiseVector2 i = NoiseGraph.Constant(2f, 3f);
             NoiseVector2 j = NoiseGraph.Constant(5f, 7f);
@@ -175,7 +174,7 @@ namespace Tests
         [Test]
         public void TransformRemapsThreeDimensionalNoiseCoordinates()
         {
-            NoiseVector3 coordinates = CreateCoordinates3D();
+            NoiseVector3 coordinates = NoiseGraph.XYZ;
             NoiseScalar original = CreatePerlin3D(coordinates);
             NoiseVector3 i = NoiseGraph.Constant(2f, 3f, 5f);
             NoiseVector3 j = NoiseGraph.Constant(7f, 11f, 13f);
@@ -201,7 +200,7 @@ namespace Tests
         [Test]
         public void Evaluate2DWritesFourScalarOutputs()
         {
-            NoiseScalar noise = CreatePerlin2D(CreateCoordinates2D());
+            NoiseScalar noise = CreatePerlin2D(NoiseGraph.XY);
             NoiseScalar negated = -noise;
             NoiseScalar doubled = noise * NoiseGraph.Constant(2f);
             NoiseScalar offset = noise + NoiseGraph.Constant(1f);
@@ -237,7 +236,7 @@ namespace Tests
         [Test]
         public void Evaluate3DWritesFourScalarOutputs()
         {
-            NoiseScalar noise = CreatePerlin3D(CreateCoordinates3D());
+            NoiseScalar noise = CreatePerlin3D(NoiseGraph.XYZ);
             NoiseScalar negated = -noise;
             NoiseScalar doubled = noise * NoiseGraph.Constant(2f);
             NoiseScalar offset = noise + NoiseGraph.Constant(1f);
@@ -276,7 +275,7 @@ namespace Tests
         {
             // Scalar operations select the expected operand for every sample, while vector
             // overloads construct one independent operation per component.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar minimum = NoiseGraph.Min(coordinates.X, NoiseGraph.Constant(0.5f));
             NoiseScalar maximum = NoiseGraph.Max(coordinates.Y, NoiseGraph.Constant(-0.25f));
 
@@ -301,7 +300,7 @@ namespace Tests
         {
             // Squaring the coordinate samples covers negative and positive bases, while the
             // vector overloads verify that component-wise and shared exponents build Pow nodes.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar squared = NoiseGraph.Pow(coordinates.X, NoiseGraph.Constant(2f));
 
             float[] squaredValues = Evaluate(NoiseGraphByteCodeCompiler.Compile(squared), seed: 0);
@@ -321,7 +320,7 @@ namespace Tests
         {
             // The fixed coordinate set includes values below zero, inside the unit interval,
             // and above one, validating both endpoint clamping and the smoothstep polynomial.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar smoothed = NoiseGraph.SmoothStep(coordinates.X);
 
             float[] actual = Evaluate(NoiseGraphByteCodeCompiler.Compile(smoothed), seed: 0);
@@ -342,7 +341,7 @@ namespace Tests
         {
             // Using the X coordinate as t covers values below zero, between zero and one,
             // and above one, verifying that the native operation intentionally remains unclamped.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar interpolated = NoiseGraph.Lerp(
                 NoiseGraph.Constant(-2f),
                 NoiseGraph.Constant(6f),
@@ -370,7 +369,7 @@ namespace Tests
         {
             // The coordinate set contains negative and positive fractional values, distinguishing
             // floor from truncation and validating both sides of zero.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar floored = NoiseGraph.Floor(coordinates.X);
 
             float[] actual = Evaluate(NoiseGraphByteCodeCompiler.Compile(floored), seed: 0);
@@ -387,7 +386,7 @@ namespace Tests
         {
             // Each utility is built exclusively from existing node operations. The samples span
             // negative and positive values to exercise clamp, fractional, and modulus behavior.
-            NoiseVector2 coordinates = CreateCoordinates2D();
+            NoiseVector2 coordinates = NoiseGraph.XY;
             NoiseScalar modulus = NoiseGraph.Constant(1.25f);
             (NoiseScalar Node, Func<float, float> Expected, string Name)[] cases =
             [
@@ -444,12 +443,6 @@ namespace Tests
                 AssertEqualEnough(xCoords[index] * 2f, output[index], $"Block sample {index} was incorrect.");
         }
 
-        static NoiseVector2 CreateCoordinates2D() =>
-            new NoiseNode(NoiseNodeType.Coords2__NoIn__x_y, Array.Empty<NoiseScalar>()).AsVector2;
-
-        static NoiseVector3 CreateCoordinates3D() =>
-            new NoiseNode(NoiseNodeType.Coords3__NoIn__x_y_z, Array.Empty<NoiseScalar>()).AsVector3;
-
         static NoiseScalar CreatePerlin2D(NoiseVector2 coordinates) =>
             new NoiseNode(NoiseNodeType.Perlin2D_noise__x_y__noise, coordinates.X, coordinates.Y).AsScalar;
 
@@ -459,11 +452,6 @@ namespace Tests
                 coordinates.X,
                 coordinates.Y,
                 coordinates.Z).AsScalar;
-
-        static NoiseVector2 Scale(NoiseVector2 coordinates, float xFrequency, float yFrequency) =>
-            new(
-                coordinates.X * NoiseGraph.Constant(xFrequency),
-                coordinates.Y * NoiseGraph.Constant(yFrequency));
 
         static float[] Evaluate(NoiseGraphByteCode compiled, int seed)
         {
