@@ -327,7 +327,7 @@ namespace NoiseDotNet
         {
             ValidateEvaluationBufferLength(yCoords.Length, xCoords.Length, nameof(yCoords));
 
-            CompiledNoiseNode compiled = NoiseNodeEval.Compile(channels);
+            NoiseGraphByteCode compiled = ByteCodeCompiler.Compile(channels);
             ByteCodeInfo info =
                 System.Runtime.InteropServices.MemoryMarshal.Read<ByteCodeInfo>(compiled.ByteCode);
             if (info.InputCount > 2)
@@ -343,7 +343,7 @@ namespace NoiseDotNet
                 xCoords.CopyTo(registers.AsSpan(0, batchSize));
             if (info.InputCount >= 2)
                 yCoords.CopyTo(registers.AsSpan(batchSize, batchSize));
-            NoiseNodeEval.EvaluateByteCode(compiled.ByteCode, seed, registers, batchSize);
+            ByteCodeEval.EvaluateByteCode(compiled.ByteCode, seed, registers, batchSize);
             return registers;
         }
 
@@ -357,7 +357,7 @@ namespace NoiseDotNet
             ValidateEvaluationBufferLength(yCoords.Length, xCoords.Length, nameof(yCoords));
             ValidateEvaluationBufferLength(zCoords.Length, xCoords.Length, nameof(zCoords));
 
-            CompiledNoiseNode compiled = NoiseNodeEval.Compile(channels);
+            NoiseGraphByteCode compiled = ByteCodeCompiler.Compile(channels);
             ByteCodeInfo info =
                 System.Runtime.InteropServices.MemoryMarshal.Read<ByteCodeInfo>(compiled.ByteCode);
 
@@ -369,7 +369,7 @@ namespace NoiseDotNet
                 yCoords.CopyTo(registers.AsSpan(batchSize, batchSize));
             if (info.InputCount >= 3)
                 zCoords.CopyTo(registers.AsSpan(batchSize * 2, batchSize));
-            NoiseNodeEval.EvaluateByteCode(compiled.ByteCode, seed, registers, batchSize);
+            ByteCodeEval.EvaluateByteCode(compiled.ByteCode, seed, registers, batchSize);
             return registers;
         }
 

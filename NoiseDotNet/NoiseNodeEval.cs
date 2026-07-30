@@ -1,18 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace NoiseDotNet
 {
     /// <summary>
     /// Compilation and evaluation utilities for NoiseNode bytecode.
     /// </summary>
-    public static class NoiseNodeEval
+    public static class ByteCodeEval
     {
-        const byte CopyOpCode = byte.MaxValue;
+        public const byte CopyOpCode = byte.MaxValue;
 
         /// <summary>
         /// Evaluates compiled NoiseNode bytecode over a batch of values.
@@ -103,124 +101,7 @@ namespace NoiseDotNet
             }
         }
 
-        /// <summary>
-        /// Compiles the graphs needed by the ordered output channels into reusable bytecode.
-        /// </summary>
-        /// <param name="outputs">Output channels, in the order they should appear in the output registers.</param>
-        public static CompiledNoiseNode Compile(params NoiseScalar[] outputs)
-        {
-            ValidateOutputs(outputs);
-            return new NoiseNodeCompiler(outputs).Compile();
-        }
 
-        /// <summary>
-        /// Returns the per-node seeds that would be assigned when compiling the graphs needed by
-        /// the ordered output channels.
-        /// </summary>
-        /// <param name="outputs">Output channels whose graphs should be inspected.</param>
-        public static Dictionary<NoiseNode, int> GetNoiseSeeds(params NoiseScalar[] outputs)
-        {
-            ValidateOutputs(outputs);
-            return new NoiseNodeCompiler(outputs).GetNoiseSeeds();
-        }
-
-        static void ValidateOutputs(NoiseScalar[] outputs)
-        {
-            ArgumentNullException.ThrowIfNull(outputs);
-            if (outputs.Length == 0)
-                throw new ArgumentException("At least one output channel must be provided.", nameof(outputs));
-        }
-
-        /// <summary>
-        /// Returns a human-readable disassembly of compiled NoiseNode bytecode.
-        /// </summary>
-        public static string ToString(ReadOnlySpan<byte> bytecode)
-        {
-            int offset = 0;
-            ByteCodeInfo info = Read<ByteCodeInfo>(bytecode, ref offset);
-            ValidateByteCodeInfo(info);
-
-            StringBuilder result = new();
-            result.Append("ByteCodeInfo { Inputs = ")
-                .Append(info.InputCount)
-                .Append(", Outputs = ")
-                .Append(info.OutputCount)
-                .Append(", Registers = ")
-                .Append(info.RegisterCount)
-                .Append(", Constants = ")
-                .Append(info.ConstantCount)
-                .AppendLine(" }");
-
-            if (info.ConstantCount > 0)
-            {
-                result.AppendLine("Constants:");
-                for (int constantIndex = 0; constantIndex < info.ConstantCount; constantIndex++)
-                {
-                    float value = Read<float>(bytecode, ref offset);
-                    result.Append("  r")
-                        .Append(info.InputCount + constantIndex)
-                        .Append(" = ")
-                        .AppendLine(value.ToString("R", CultureInfo.InvariantCulture));
-                }
-            }
-
-            result.AppendLine("Instructions:");
-            int instructionIndex = 0;
-            while (offset < bytecode.Length)
-            {
-                byte opCode = Read<byte>(bytecode, ref offset);
-                result.Append("  ").Append(instructionIndex++).Append(": ");
-
-                if (opCode == CopyOpCode)
-                {
-                    int source = ReadRegisterIndex(bytecode, ref offset, info.RegisterCount);
-                    int destination = ReadRegisterIndex(bytecode, ref offset, info.RegisterCount);
-                    result.Append("Copy r").Append(source).Append(" -> r").AppendLine(destination.ToString());
-                    continue;
-                }
-
-                NoiseNodeType type = (NoiseNodeType)opCode;
-                if (!IsExecutable(type))
-                    throw new ArgumentException($"Bytecode contains unsupported opcode {opCode}.", nameof(bytecode));
-
-                result.Append(type);
-                if (type.IsNoise())
-                {
-                    NoiseOpInfo noiseInfo = Read<NoiseOpInfo>(bytecode, ref offset);
-                    result.Append(" [frequency = (")
-                        .Append(noiseInfo.XFrequency.ToString("R", CultureInfo.InvariantCulture))
-                        .Append(", ")
-                        .Append(noiseInfo.YFrequency.ToString("R", CultureInfo.InvariantCulture))
-                        .Append(", ")
-                        .Append(noiseInfo.ZFrequency.ToString("R", CultureInfo.InvariantCulture))
-                        .Append("), seed = ")
-                        .Append(noiseInfo.Seed);
-                    if (noiseInfo.Accumulate)
-                        result.Append(", accumulate");
-                    result.Append(']');
-                }
-
-                int inputCount = type.GetInputCount();
-                int outputCount = type.GetOutputCount();
-                result.Append(" (");
-                for (int i = 0; i < inputCount; i++)
-                {
-                    if (i > 0)
-                        result.Append(", ");
-                    result.Append('r').Append(ReadRegisterIndex(bytecode, ref offset, info.RegisterCount));
-                }
-                result.Append(") -> (");
-                for (int i = 0; i < outputCount; i++)
-                {
-                    if (i > 0)
-                        result.Append(", ");
-                    result.Append('r').Append(ReadRegisterIndex(bytecode, ref offset, info.RegisterCount));
-                }
-                result.AppendLine(")");
-            }
-
-            return result.ToString().TrimEnd();
-        }
 
         static void EvaluateInstruction(
             NoiseNodeType type,
@@ -358,7 +239,7 @@ namespace NoiseDotNet
             zFreq: info.ZFrequency,
             amplitude: 1f,
             amplitude2: 1f,
-            seed: evaluationSeed ^ info.Seed,
+            seed: evaluationSeed + info.Seed,
             accumulate: info.Accumulate);
 
         static Span<float> GetRegister(Span<float> registerSpace, int register, int batchSize) =>
@@ -409,72 +290,5 @@ namespace NoiseDotNet
 
         internal static bool IsExecutable(NoiseNodeType type) =>
             type != NoiseNodeType.Null && Enum.IsDefined(type);
-
-        internal static void Append<T>(List<byte> bytecode, T value) where T : unmanaged
-        {
-            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(
-                MemoryMarshal.CreateReadOnlySpan(ref value, 1));
-            for (int i = 0; i < bytes.Length; i++)
-                bytecode.Add(bytes[i]);
-        }
-
-        internal static void AppendCopy(List<byte> bytecode, int source, int destination)
-        {
-            Append(bytecode, CopyOpCode);
-            Append(bytecode, source);
-            Append(bytecode, destination);
-        }
-    }
-
-    /// <summary>
-    /// Information about a compiled NoiseNode. Stored at the beginning of the compiled bytecode.
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ByteCodeInfo
-    {
-        public int InputCount;
-        public int OutputCount;
-        public int RegisterCount;
-        public int ConstantCount;
-    }
-
-    /// <summary>
-    /// Extra information for a noise-function instruction.
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NoiseOpInfo
-    {
-        /// <summary>
-        /// If true, all outputs of the noise function are accumulated instead of overwritten.
-        /// </summary>
-        public bool Accumulate;
-        public float XFrequency;
-        public float YFrequency;
-        public float ZFrequency;
-        public int Seed;
-    }
-
-    /// <summary>
-    /// A NoiseNode graph compiled into evaluatable bytecode.
-    /// </summary>
-    public readonly struct CompiledNoiseNode
-    {
-        /// <summary>
-        /// The raw bytecode. Its layout is:
-        /// [ByteCodeInfo][constants][[opcode][optional NoiseOpInfo][input registers][output registers]]...
-        /// Inputs occupy the first registers, constants the following registers, and final outputs the first registers.
-        /// </summary>
-        public readonly byte[] ByteCode;
-
-        internal CompiledNoiseNode(byte[] byteCode)
-        {
-            ByteCode = byteCode;
-        }
-
-        /// <summary>
-        /// Returns a human-readable disassembly of this compiled graph.
-        /// </summary>
-        public override string ToString() =>
-            ByteCode is null ? "Uninitialized CompiledNoiseNode" : NoiseNodeEval.ToString(ByteCode);
     }
 }

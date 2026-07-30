@@ -28,7 +28,7 @@ namespace Tests
             // A compiled noise instruction must read the coordinate registers rather than
             // accidentally producing one constant value for the whole batch.
             NoiseVector2 coordinates = CreateCoordinates2D();
-            CompiledNoiseNode compiled = NoiseNodeEval.Compile(CreatePerlin2D(coordinates));
+            NoiseGraphByteCode compiled = ByteCodeCompiler.Compile(CreatePerlin2D(coordinates));
 
             float[] actual = Evaluate(compiled, seed: 17);
 
@@ -45,8 +45,8 @@ namespace Tests
             // evaluation seed to select different deterministic noise functions.
             NoiseVector2 coordinates = CreateCoordinates2D();
             NoiseScalar noise = CreatePerlin2D(coordinates);
-            CompiledNoiseNode firstCompilation = NoiseNodeEval.Compile(noise);
-            CompiledNoiseNode secondCompilation = NoiseNodeEval.Compile(noise);
+            NoiseGraphByteCode firstCompilation = ByteCodeCompiler.Compile(noise);
+            NoiseGraphByteCode secondCompilation = ByteCodeCompiler.Compile(noise);
 
             float[] first = Evaluate(firstCompilation, seed: 41);
             float[] second = Evaluate(secondCompilation, seed: 97);
@@ -61,8 +61,8 @@ namespace Tests
             // one internal seed and evaluate exactly the same function for both operands.
             NoiseVector2 coordinates = CreateCoordinates2D();
             NoiseScalar noise = CreatePerlin2D(coordinates);
-            CompiledNoiseNode doubledGraph = NoiseNodeEval.Compile(noise + noise);
-            CompiledNoiseNode baseGraph = NoiseNodeEval.Compile(noise);
+            NoiseGraphByteCode doubledGraph = ByteCodeCompiler.Compile(noise + noise);
+            NoiseGraphByteCode baseGraph = ByteCodeCompiler.Compile(noise);
 
             float[] doubled = Evaluate(doubledGraph, seed: 23);
             float[] original = Evaluate(baseGraph, seed: 23);
@@ -81,16 +81,16 @@ namespace Tests
             NoiseScalar leftNoise = CreatePerlin2D(coordinates);
             NoiseScalar rightNoise = CreatePerlin2D(coordinates);
             NoiseScalar sum = leftNoise + rightNoise;
-            Dictionary<NoiseNode, int> combinedSeeds = NoiseNodeEval.GetNoiseSeeds(sum);
+            Dictionary<NoiseNode, int> combinedSeeds = ByteCodeCompiler.GetNoiseSeeds(sum);
 
-            CompiledNoiseNode combinedGraph = NoiseNodeEval.Compile(sum);
-            CompiledNoiseNode leftGraph = NoiseNodeEval.Compile(leftNoise);
-            CompiledNoiseNode rightGraph = NoiseNodeEval.Compile(rightNoise);
+            NoiseGraphByteCode combinedGraph = ByteCodeCompiler.Compile(sum);
+            NoiseGraphByteCode leftGraph = ByteCodeCompiler.Compile(leftNoise);
+            NoiseGraphByteCode rightGraph = ByteCodeCompiler.Compile(rightNoise);
             int evaluationSeed = 61;
 
             float[] combined = Evaluate(combinedGraph, evaluationSeed);
-            float[] left = Evaluate(leftGraph, evaluationSeed ^ combinedSeeds[leftNoise.Node]);
-            float[] right = Evaluate(rightGraph, evaluationSeed ^ combinedSeeds[rightNoise.Node]);
+            float[] left = Evaluate(leftGraph, evaluationSeed + combinedSeeds[leftNoise.Node]);
+            float[] right = Evaluate(rightGraph, evaluationSeed + combinedSeeds[rightNoise.Node]);
 
             Assert.That(combinedSeeds[leftNoise.Node], Is.Not.EqualTo(combinedSeeds[rightNoise.Node]));
             for (int i = 0; i < combined.Length; i++)
@@ -111,8 +111,8 @@ namespace Tests
             NoiseScalar octave2 = CreatePerlin2D(Scale(coordinates, 2f, 3f));
             NoiseScalar fbm = octave0 + octave1 * NoiseNode.Constant(0.5f) +
                               octave2 * NoiseNode.Constant(0.25f);
-            Dictionary<NoiseNode, int> seeds = NoiseNodeEval.GetNoiseSeeds(fbm);
-            CompiledNoiseNode compiled = NoiseNodeEval.Compile(fbm);
+            Dictionary<NoiseNode, int> seeds = ByteCodeCompiler.GetNoiseSeeds(fbm);
+            NoiseGraphByteCode compiled = ByteCodeCompiler.Compile(fbm);
             const int evaluationSeed = 73;
 
             string disassembly = compiled.ToString();
@@ -135,14 +135,14 @@ namespace Tests
             // compiler and the direct reference path.
             float[] expected =
             [
-                -0.35843804f,
-                0.013631545f,
-                -0.019447811f,
-                0.2464526f,
-                -0.20418963f,
-                0.22407344f,
-                -0.005684115f,
-                0.21527067f,
+                -0.3199076f,
+                -0.002501659f,
+                -0.17252332f,
+                0.24282697f,
+                -0.12385333f,
+                0.0887285f,
+                0.10709832f,
+                0.19059989f,
             ];
             for (int i = 0; i < actual.Length; i++)
                 AssertEqualEnough(expected[i], actual[i], $"FBM golden sample {i} changed.");
@@ -161,8 +161,8 @@ namespace Tests
                 coordinates.X * i.X + coordinates.Y * j.X,
                 coordinates.X * i.Y + coordinates.Y * j.Y));
 
-            float[] actualValues = Evaluate(NoiseNodeEval.Compile(transformed), seed: 83);
-            float[] expectedValues = Evaluate(NoiseNodeEval.Compile(expected), seed: 83);
+            float[] actualValues = Evaluate(ByteCodeCompiler.Compile(transformed), seed: 83);
+            float[] expectedValues = Evaluate(ByteCodeCompiler.Compile(expected), seed: 83);
             for (int sampleIndex = 0; sampleIndex < actualValues.Length; sampleIndex++)
             {
                 AssertEqualEnough(
@@ -187,8 +187,8 @@ namespace Tests
                 coordinates.X * i.Y + coordinates.Y * j.Y + coordinates.Z * k.Y,
                 coordinates.X * i.Z + coordinates.Y * j.Z + coordinates.Z * k.Z));
 
-            float[] actualValues = Evaluate(NoiseNodeEval.Compile(transformed), seed: 89);
-            float[] expectedValues = Evaluate(NoiseNodeEval.Compile(expected), seed: 89);
+            float[] actualValues = Evaluate(ByteCodeCompiler.Compile(transformed), seed: 89);
+            float[] expectedValues = Evaluate(ByteCodeCompiler.Compile(expected), seed: 89);
             for (int sampleIndex = 0; sampleIndex < actualValues.Length; sampleIndex++)
             {
                 AssertEqualEnough(
@@ -223,7 +223,7 @@ namespace Tests
                 offsetOutput,
                 seed: 97);
 
-            float[] expectedNoise = Evaluate(NoiseNodeEval.Compile(noise), seed: 97);
+            float[] expectedNoise = Evaluate(ByteCodeCompiler.Compile(noise), seed: 97);
             for (int sampleIndex = 0; sampleIndex < expectedNoise.Length; sampleIndex++)
             {
                 float expected = expectedNoise[sampleIndex];
@@ -260,7 +260,7 @@ namespace Tests
                 offsetOutput,
                 seed: 101);
 
-            float[] expectedNoise = Evaluate(NoiseNodeEval.Compile(noise), seed: 101);
+            float[] expectedNoise = Evaluate(ByteCodeCompiler.Compile(noise), seed: 101);
             for (int sampleIndex = 0; sampleIndex < expectedNoise.Length; sampleIndex++)
             {
                 float expected = expectedNoise[sampleIndex];
@@ -280,8 +280,8 @@ namespace Tests
             NoiseScalar minimum = NoiseNode.Min(coordinates.X, NoiseNode.Constant(0.5f));
             NoiseScalar maximum = NoiseNode.Max(coordinates.Y, NoiseNode.Constant(-0.25f));
 
-            float[] minimumValues = Evaluate(NoiseNodeEval.Compile(minimum), seed: 0);
-            float[] maximumValues = Evaluate(NoiseNodeEval.Compile(maximum), seed: 0);
+            float[] minimumValues = Evaluate(ByteCodeCompiler.Compile(minimum), seed: 0);
+            float[] maximumValues = Evaluate(ByteCodeCompiler.Compile(maximum), seed: 0);
             for (int i = 0; i < XCoordinates.Length; i++)
             {
                 AssertEqualEnough(MathF.Min(XCoordinates[i], 0.5f), minimumValues[i], $"Minimum sample {i} was incorrect.");
@@ -304,7 +304,7 @@ namespace Tests
             NoiseVector2 coordinates = CreateCoordinates2D();
             NoiseScalar squared = NoiseNode.Pow(coordinates.X, NoiseNode.Constant(2f));
 
-            float[] squaredValues = Evaluate(NoiseNodeEval.Compile(squared), seed: 0);
+            float[] squaredValues = Evaluate(ByteCodeCompiler.Compile(squared), seed: 0);
             for (int i = 0; i < XCoordinates.Length; i++)
                 AssertEqualEnough(MathF.Pow(XCoordinates[i], 2f), squaredValues[i], $"Power sample {i} was incorrect.");
 
@@ -324,7 +324,7 @@ namespace Tests
             NoiseVector2 coordinates = CreateCoordinates2D();
             NoiseScalar smoothed = NoiseNode.SmoothStep(coordinates.X);
 
-            float[] actual = Evaluate(NoiseNodeEval.Compile(smoothed), seed: 0);
+            float[] actual = Evaluate(ByteCodeCompiler.Compile(smoothed), seed: 0);
             for (int i = 0; i < XCoordinates.Length; i++)
             {
                 float clamped = Math.Clamp(XCoordinates[i], 0f, 1f);
@@ -348,7 +348,7 @@ namespace Tests
                 NoiseNode.Constant(6f),
                 coordinates.X);
 
-            float[] actual = Evaluate(NoiseNodeEval.Compile(interpolated), seed: 0);
+            float[] actual = Evaluate(ByteCodeCompiler.Compile(interpolated), seed: 0);
             for (int i = 0; i < XCoordinates.Length; i++)
             {
                 float expected = -2f + (6f - -2f) * XCoordinates[i];
@@ -373,7 +373,7 @@ namespace Tests
             NoiseVector2 coordinates = CreateCoordinates2D();
             NoiseScalar floored = NoiseNode.Floor(coordinates.X);
 
-            float[] actual = Evaluate(NoiseNodeEval.Compile(floored), seed: 0);
+            float[] actual = Evaluate(ByteCodeCompiler.Compile(floored), seed: 0);
             for (int i = 0; i < XCoordinates.Length; i++)
                 AssertEqualEnough(MathF.Floor(XCoordinates[i]), actual[i], $"Floor sample {i} was incorrect.");
 
@@ -409,7 +409,7 @@ namespace Tests
 
             foreach ((NoiseScalar node, Func<float, float> expected, string name) in cases)
             {
-                float[] actual = Evaluate(NoiseNodeEval.Compile(node), seed: 0);
+                float[] actual = Evaluate(ByteCodeCompiler.Compile(node), seed: 0);
                 for (int i = 0; i < XCoordinates.Length; i++)
                     AssertEqualEnough(expected(XCoordinates[i]), actual[i], $"{name} sample {i} was incorrect.");
             }
@@ -451,7 +451,7 @@ namespace Tests
                 coordinates.X * NoiseNode.Constant(xFrequency),
                 coordinates.Y * NoiseNode.Constant(yFrequency));
 
-        static float[] Evaluate(CompiledNoiseNode compiled, int seed)
+        static float[] Evaluate(NoiseGraphByteCode compiled, int seed)
         {
             ByteCodeInfo info = MemoryMarshal.Read<ByteCodeInfo>(compiled.ByteCode);
             int batchSize = XCoordinates.Length;
@@ -461,7 +461,7 @@ namespace Tests
             if (info.InputCount == 3)
                 ZCoordinates.CopyTo(registerSpace, batchSize * 2);
 
-            NoiseNodeEval.EvaluateByteCode(compiled.ByteCode, seed, registerSpace, batchSize);
+            ByteCodeEval.EvaluateByteCode(compiled.ByteCode, seed, registerSpace, batchSize);
             return registerSpace[..batchSize];
         }
 
@@ -478,17 +478,17 @@ namespace Tests
                 XCoordinates,
                 YCoordinates,
                 octave0,
-                new(xFreq: 0.5f, yFreq: 0.75f, seed: evaluationSeed ^ octave0Seed));
+                new(xFreq: 0.5f, yFreq: 0.75f, seed: evaluationSeed + octave0Seed));
             Noise.GradientNoise2D(
                 XCoordinates,
                 YCoordinates,
                 octave1,
-                new(xFreq: 1f, yFreq: 1.5f, seed: evaluationSeed ^ octave1Seed));
+                new(xFreq: 1f, yFreq: 1.5f, seed: evaluationSeed + octave1Seed));
             Noise.GradientNoise2D(
                 XCoordinates,
                 YCoordinates,
                 octave2,
-                new(xFreq: 2f, yFreq: 3f, seed: evaluationSeed ^ octave2Seed));
+                new(xFreq: 2f, yFreq: 3f, seed: evaluationSeed + octave2Seed));
 
             float[] result = new float[XCoordinates.Length];
             for (int i = 0; i < result.Length; i++)

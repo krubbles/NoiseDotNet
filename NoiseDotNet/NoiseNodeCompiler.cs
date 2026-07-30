@@ -1,12 +1,20 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace NoiseDotNet
 {
     /// <summary>
     /// Stateful NoiseNode compiler.
     /// </summary>
-    sealed class NoiseNodeCompiler
+    public sealed class ByteCodeCompiler
     {
+        /// <summary>Compiles a noise graph into a byte code.</summary>
+        public static NoiseGraphByteCode Compile(params NoiseScalar[] outputs) => new ByteCodeCompiler(outputs).Compile();
+
+        /// <summary>Returns the assigned seed offsets for each noise function in the noise graph.
+        /// Add seed offset to main eval seed to get the noise function's seed.</summary>
+        public static Dictionary<NoiseNode, int> GetNoiseSeeds(params NoiseScalar[] outputs) => new ByteCodeCompiler(outputs).GetNoiseSeeds();
+
         readonly NoiseScalar[] _outputs;
         readonly Dictionary<NoiseNode, VisitState> _visitStates = new();
         readonly List<NoiseNode> _discoveryOrder = [];
@@ -25,12 +33,16 @@ namespace NoiseDotNet
         int _maxRegisterCount;
         bool _graphInitialized;
 
-        public NoiseNodeCompiler(NoiseScalar[] outputs)
+        ByteCodeCompiler(NoiseScalar[] outputs)
         {
             _outputs = outputs;
+            ArgumentNullException.ThrowIfNull(outputs);
+            if (outputs.Length == 0)
+                throw new ArgumentException("At least one output channel must be provided.", nameof(outputs));
         }
 
-        public CompiledNoiseNode Compile()
+
+        public NoiseGraphByteCode Compile()
         {
             InitializeGraph();
             InitializeLeafRegisters();
@@ -49,11 +61,11 @@ namespace NoiseDotNet
                 Unsafe.SizeOf<ByteCodeInfo>() +
                 _constants.Count * sizeof(float) +
                 _instructions.Count);
-            NoiseNodeEval.Append(bytecode, info);
+            Append(bytecode, info);
             foreach (float constant in _constants)
-                NoiseNodeEval.Append(bytecode, constant);
+                Append(bytecode, constant);
             bytecode.AddRange(_instructions);
-            return new CompiledNoiseNode(bytecode.ToArray());
+            return new NoiseGraphByteCode(bytecode.ToArray());
         }
 
         public Dictionary<NoiseNode, int> GetNoiseSeeds()
@@ -208,7 +220,7 @@ namespace NoiseDotNet
                 return;
             }
 
-            if (!NoiseNodeEval.IsExecutable(node.Type))
+            if (!ByteCodeEval.IsExecutable(node.Type))
                 throw new NotSupportedException($"Cannot compile NoiseNodeType {node.Type}.");
 
             if (TryCompileAccumulatedNoise(node))
@@ -275,7 +287,7 @@ namespace NoiseDotNet
             }
 
             if (outputRegister != otherRegister)
-                NoiseNodeEval.AppendCopy(_instructions, otherRegister, outputRegister);
+                AppendCopy(_instructions, otherRegister, outputRegister);
 
             int[] noiseInputRegisters = GetRegisters(noiseInputs);
             EmitInstruction(
@@ -402,17 +414,17 @@ namespace NoiseDotNet
             if ((uint)opCode >= byte.MaxValue)
                 throw new InvalidOperationException($"NoiseNodeType {node.Type} cannot be represented by the bytecode opcode.");
 
-            NoiseNodeEval.Append(_instructions, (byte)opCode);
+            Append(_instructions, (byte)opCode);
             if (node.Type.IsNoise())
             {
                 NoiseOpInfo noiseInfo = CreateNoiseInfo(node, inputs, accumulate);
-                NoiseNodeEval.Append(_instructions, noiseInfo);
+                Append(_instructions, noiseInfo);
             }
 
             foreach (int register in inputRegisters)
-                NoiseNodeEval.Append(_instructions, register);
+                Append(_instructions, register);
             foreach (int register in outputRegisters)
-                NoiseNodeEval.Append(_instructions, register);
+                Append(_instructions, register);
         }
 
         NoiseOpInfo CreateNoiseInfo(NoiseNode node, ReadOnlySpan<NoiseScalar> effectiveInputs, bool accumulate)
@@ -508,14 +520,14 @@ namespace NoiseDotNet
                 if (safeMoveIndex >= 0)
                 {
                     RegisterMove move = pending[safeMoveIndex];
-                    NoiseNodeEval.AppendCopy(_instructions, move.Source, move.Destination);
+                    AppendCopy(_instructions, move.Source, move.Destination);
                     pending.RemoveAt(safeMoveIndex);
                     continue;
                 }
 
                 int sourceToPreserve = pending[0].Source;
                 int temporary = AllocateRegister();
-                NoiseNodeEval.AppendCopy(_instructions, sourceToPreserve, temporary);
+                AppendCopy(_instructions, sourceToPreserve, temporary);
                 for (int i = 0; i < pending.Count; i++)
                 {
                     if (pending[i].Source == sourceToPreserve)
@@ -566,6 +578,21 @@ namespace NoiseDotNet
             NoiseNodeType.Coords1__NoIn__x or
             NoiseNodeType.Coords2__NoIn__x_y or
             NoiseNodeType.Coords3__NoIn__x_y_z;
+
+        internal static void Append<T>(List<byte> bytecode, T value) where T : unmanaged
+        {
+            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(
+                MemoryMarshal.CreateReadOnlySpan(ref value, 1));
+            for (int i = 0; i < bytes.Length; i++)
+                bytecode.Add(bytes[i]);
+        }
+
+        internal static void AppendCopy(List<byte> bytecode, int source, int destination)
+        {
+            Append(bytecode, ByteCodeEval.CopyOpCode);
+            Append(bytecode, source);
+            Append(bytecode, destination);
+        }
 
         static void ValidateScalar(NoiseScalar scalar, NoiseNode consumer)
         {
