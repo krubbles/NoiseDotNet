@@ -79,6 +79,25 @@ namespace Tests
             AssertCompilesAccurately(NoiseGraph.Multiply(scalarA, scalarB), x => x * -1.5f);
         }
 
+        static void AssertVectorScalarMultiply(
+            NoiseVector2 actual,
+            NoiseVector2 vector,
+            NoiseScalar scalar)
+        {
+            AssertBinaryNode(actual.X, NoiseNodeType.Multiply__a_b__product, vector.X, scalar);
+            AssertBinaryNode(actual.Y, NoiseNodeType.Multiply__a_b__product, vector.Y, scalar);
+        }
+
+        static void AssertVectorScalarMultiply(
+            NoiseVector3 actual,
+            NoiseVector3 vector,
+            NoiseScalar scalar)
+        {
+            AssertBinaryNode(actual.X, NoiseNodeType.Multiply__a_b__product, vector.X, scalar);
+            AssertBinaryNode(actual.Y, NoiseNodeType.Multiply__a_b__product, vector.Y, scalar);
+            AssertBinaryNode(actual.Z, NoiseNodeType.Multiply__a_b__product, vector.Z, scalar);
+        }
+
         [Test]
         public void InverseTests()
         {
@@ -160,6 +179,19 @@ namespace Tests
                 x => MathF.Pow(x + 4f, 2.5f));
         }
 
+        static void AssertVectorScalarPow(NoiseVector2 actual, NoiseVector2 value, NoiseScalar power)
+        {
+            AssertBinaryNode(actual.X, NoiseNodeType.Pow__value_power__result, value.X, power);
+            AssertBinaryNode(actual.Y, NoiseNodeType.Pow__value_power__result, value.Y, power);
+        }
+
+        static void AssertVectorScalarPow(NoiseVector3 actual, NoiseVector3 value, NoiseScalar power)
+        {
+            AssertBinaryNode(actual.X, NoiseNodeType.Pow__value_power__result, value.X, power);
+            AssertBinaryNode(actual.Y, NoiseNodeType.Pow__value_power__result, value.Y, power);
+            AssertBinaryNode(actual.Z, NoiseNodeType.Pow__value_power__result, value.Z, power);
+        }
+
         [Test]
         public void SmoothStepTests()
         {
@@ -213,6 +245,62 @@ namespace Tests
                 x => -2f + (6f - -2f) * x);
         }
 
+        static void AssertTernaryNode(
+            NoiseScalar actual,
+            NoiseNodeType type,
+            NoiseScalar a,
+            NoiseScalar b,
+            NoiseScalar t)
+        {
+            Assert.That(actual.Node.Type, Is.EqualTo(type));
+            Assert.That(actual.ChannelIndex, Is.Zero);
+            Assert.That(actual.Node.Inputs.ToArray(), Is.EqualTo(new[] { a, b, t }));
+        }
+
+        static void AssertTernaryNodes(
+            NoiseVector2 actual,
+            NoiseNodeType type,
+            NoiseVector2 a,
+            NoiseVector2 b,
+            NoiseVector2 t)
+        {
+            AssertTernaryNode(actual.X, type, a.X, b.X, t.X);
+            AssertTernaryNode(actual.Y, type, a.Y, b.Y, t.Y);
+        }
+
+        static void AssertTernaryNodes(
+            NoiseVector3 actual,
+            NoiseNodeType type,
+            NoiseVector3 a,
+            NoiseVector3 b,
+            NoiseVector3 t)
+        {
+            AssertTernaryNode(actual.X, type, a.X, b.X, t.X);
+            AssertTernaryNode(actual.Y, type, a.Y, b.Y, t.Y);
+            AssertTernaryNode(actual.Z, type, a.Z, b.Z, t.Z);
+        }
+
+        static void AssertVectorScalarLerp(
+            NoiseVector2 actual,
+            NoiseVector2 a,
+            NoiseVector2 b,
+            NoiseScalar t)
+        {
+            AssertTernaryNode(actual.X, NoiseNodeType.Lerp__a_b_t__result, a.X, b.X, t);
+            AssertTernaryNode(actual.Y, NoiseNodeType.Lerp__a_b_t__result, a.Y, b.Y, t);
+        }
+
+        static void AssertVectorScalarLerp(
+            NoiseVector3 actual,
+            NoiseVector3 a,
+            NoiseVector3 b,
+            NoiseScalar t)
+        {
+            AssertTernaryNode(actual.X, NoiseNodeType.Lerp__a_b_t__result, a.X, b.X, t);
+            AssertTernaryNode(actual.Y, NoiseNodeType.Lerp__a_b_t__result, a.Y, b.Y, t);
+            AssertTernaryNode(actual.Z, NoiseNodeType.Lerp__a_b_t__result, a.Z, b.Z, t);
+        }
+
         [Test]
         public void FloorTests()
         {
@@ -243,18 +331,6 @@ namespace Tests
             Assert.That(actual.Node.Type, Is.EqualTo(type));
             Assert.That(actual.ChannelIndex, Is.Zero);
             Assert.That(actual.Node.Inputs.ToArray(), Is.EqualTo(new[] { a, b }));
-        }
-
-        static void AssertTernaryNode(
-            NoiseScalar actual,
-            NoiseNodeType type,
-            NoiseScalar a,
-            NoiseScalar b,
-            NoiseScalar t)
-        {
-            Assert.That(actual.Node.Type, Is.EqualTo(type));
-            Assert.That(actual.ChannelIndex, Is.Zero);
-            Assert.That(actual.Node.Inputs.ToArray(), Is.EqualTo(new[] { a, b, t }));
         }
 
         static void AssertUnaryNodes(NoiseVector2 actual, NoiseNodeType type, NoiseVector2 value)
@@ -289,82 +365,6 @@ namespace Tests
             AssertBinaryNode(actual.X, type, a.X, b.X);
             AssertBinaryNode(actual.Y, type, a.Y, b.Y);
             AssertBinaryNode(actual.Z, type, a.Z, b.Z);
-        }
-
-        static void AssertTernaryNodes(
-            NoiseVector2 actual,
-            NoiseNodeType type,
-            NoiseVector2 a,
-            NoiseVector2 b,
-            NoiseVector2 t)
-        {
-            AssertTernaryNode(actual.X, type, a.X, b.X, t.X);
-            AssertTernaryNode(actual.Y, type, a.Y, b.Y, t.Y);
-        }
-
-        static void AssertTernaryNodes(
-            NoiseVector3 actual,
-            NoiseNodeType type,
-            NoiseVector3 a,
-            NoiseVector3 b,
-            NoiseVector3 t)
-        {
-            AssertTernaryNode(actual.X, type, a.X, b.X, t.X);
-            AssertTernaryNode(actual.Y, type, a.Y, b.Y, t.Y);
-            AssertTernaryNode(actual.Z, type, a.Z, b.Z, t.Z);
-        }
-
-        static void AssertVectorScalarMultiply(
-            NoiseVector2 actual,
-            NoiseVector2 vector,
-            NoiseScalar scalar)
-        {
-            AssertBinaryNode(actual.X, NoiseNodeType.Multiply__a_b__product, vector.X, scalar);
-            AssertBinaryNode(actual.Y, NoiseNodeType.Multiply__a_b__product, vector.Y, scalar);
-        }
-
-        static void AssertVectorScalarMultiply(
-            NoiseVector3 actual,
-            NoiseVector3 vector,
-            NoiseScalar scalar)
-        {
-            AssertBinaryNode(actual.X, NoiseNodeType.Multiply__a_b__product, vector.X, scalar);
-            AssertBinaryNode(actual.Y, NoiseNodeType.Multiply__a_b__product, vector.Y, scalar);
-            AssertBinaryNode(actual.Z, NoiseNodeType.Multiply__a_b__product, vector.Z, scalar);
-        }
-
-        static void AssertVectorScalarPow(NoiseVector2 actual, NoiseVector2 value, NoiseScalar power)
-        {
-            AssertBinaryNode(actual.X, NoiseNodeType.Pow__value_power__result, value.X, power);
-            AssertBinaryNode(actual.Y, NoiseNodeType.Pow__value_power__result, value.Y, power);
-        }
-
-        static void AssertVectorScalarPow(NoiseVector3 actual, NoiseVector3 value, NoiseScalar power)
-        {
-            AssertBinaryNode(actual.X, NoiseNodeType.Pow__value_power__result, value.X, power);
-            AssertBinaryNode(actual.Y, NoiseNodeType.Pow__value_power__result, value.Y, power);
-            AssertBinaryNode(actual.Z, NoiseNodeType.Pow__value_power__result, value.Z, power);
-        }
-
-        static void AssertVectorScalarLerp(
-            NoiseVector2 actual,
-            NoiseVector2 a,
-            NoiseVector2 b,
-            NoiseScalar t)
-        {
-            AssertTernaryNode(actual.X, NoiseNodeType.Lerp__a_b_t__result, a.X, b.X, t);
-            AssertTernaryNode(actual.Y, NoiseNodeType.Lerp__a_b_t__result, a.Y, b.Y, t);
-        }
-
-        static void AssertVectorScalarLerp(
-            NoiseVector3 actual,
-            NoiseVector3 a,
-            NoiseVector3 b,
-            NoiseScalar t)
-        {
-            AssertTernaryNode(actual.X, NoiseNodeType.Lerp__a_b_t__result, a.X, b.X, t);
-            AssertTernaryNode(actual.Y, NoiseNodeType.Lerp__a_b_t__result, a.Y, b.Y, t);
-            AssertTernaryNode(actual.Z, NoiseNodeType.Lerp__a_b_t__result, a.Z, b.Z, t);
         }
 
         static void AssertCompilesAccurately(NoiseScalar graph, Func<float, float> referenceImpl)
