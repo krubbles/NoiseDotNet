@@ -125,6 +125,273 @@ namespace NoiseDotNet
             }
         }
 
+        /// <summary>
+        /// Evaluates one scalar graph over two-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate2D(
+            NoiseScalar channel1,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            Span<float> output1,
+            int seed = 0)
+        {
+            float[] registers = Evaluate2D(
+                new NoiseScalar[] { channel1 },
+                xCoords,
+                yCoords,
+                seed);
+            CopyEvaluationOutput(registers, xCoords.Length, 0, output1);
+        }
+
+        /// <summary>
+        /// Evaluates two scalar graphs over two-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate2D(
+            NoiseScalar channel1,
+            NoiseScalar channel2,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            Span<float> output1,
+            Span<float> output2,
+            int seed = 0)
+        {
+            float[] registers = Evaluate2D(
+                new NoiseScalar[] { channel1, channel2 },
+                xCoords,
+                yCoords,
+                seed);
+            int batchSize = xCoords.Length;
+            CopyEvaluationOutput(registers, batchSize, 0, output1);
+            CopyEvaluationOutput(registers, batchSize, 1, output2);
+        }
+
+        /// <summary>
+        /// Evaluates three scalar graphs over two-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate2D(
+            NoiseScalar channel1,
+            NoiseScalar channel2,
+            NoiseScalar channel3,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            Span<float> output1,
+            Span<float> output2,
+            Span<float> output3,
+            int seed = 0)
+        {
+            float[] registers = Evaluate2D(
+                new NoiseScalar[] { channel1, channel2, channel3 },
+                xCoords,
+                yCoords,
+                seed);
+            int batchSize = xCoords.Length;
+            CopyEvaluationOutput(registers, batchSize, 0, output1);
+            CopyEvaluationOutput(registers, batchSize, 1, output2);
+            CopyEvaluationOutput(registers, batchSize, 2, output3);
+        }
+
+        /// <summary>
+        /// Evaluates four scalar graphs over two-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate2D(
+            NoiseScalar channel1,
+            NoiseScalar channel2,
+            NoiseScalar channel3,
+            NoiseScalar channel4,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            Span<float> output1,
+            Span<float> output2,
+            Span<float> output3,
+            Span<float> output4,
+            int seed = 0)
+        {
+            float[] registers = Evaluate2D(
+                new NoiseScalar[] { channel1, channel2, channel3, channel4 },
+                xCoords,
+                yCoords,
+                seed);
+            int batchSize = xCoords.Length;
+            CopyEvaluationOutput(registers, batchSize, 0, output1);
+            CopyEvaluationOutput(registers, batchSize, 1, output2);
+            CopyEvaluationOutput(registers, batchSize, 2, output3);
+            CopyEvaluationOutput(registers, batchSize, 3, output4);
+        }
+
+        /// <summary>
+        /// Evaluates one scalar graph over three-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate3D(
+            NoiseScalar channel1,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            ReadOnlySpan<float> zCoords,
+            Span<float> output1,
+            int seed = 0)
+        {
+            float[] registers = Evaluate3D(
+                new NoiseScalar[] { channel1 },
+                xCoords,
+                yCoords,
+                zCoords,
+                seed);
+            CopyEvaluationOutput(registers, xCoords.Length, 0, output1);
+        }
+
+        /// <summary>
+        /// Evaluates two scalar graphs over three-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate3D(
+            NoiseScalar channel1,
+            NoiseScalar channel2,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            ReadOnlySpan<float> zCoords,
+            Span<float> output1,
+            Span<float> output2,
+            int seed = 0)
+        {
+            float[] registers = Evaluate3D(
+                new NoiseScalar[] { channel1, channel2 },
+                xCoords,
+                yCoords,
+                zCoords,
+                seed);
+            int batchSize = xCoords.Length;
+            CopyEvaluationOutput(registers, batchSize, 0, output1);
+            CopyEvaluationOutput(registers, batchSize, 1, output2);
+        }
+
+        /// <summary>
+        /// Evaluates three scalar graphs over three-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate3D(
+            NoiseScalar channel1,
+            NoiseScalar channel2,
+            NoiseScalar channel3,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            ReadOnlySpan<float> zCoords,
+            Span<float> output1,
+            Span<float> output2,
+            Span<float> output3,
+            int seed = 0)
+        {
+            float[] registers = Evaluate3D(
+                new NoiseScalar[] { channel1, channel2, channel3 },
+                xCoords,
+                yCoords,
+                zCoords,
+                seed);
+            int batchSize = xCoords.Length;
+            CopyEvaluationOutput(registers, batchSize, 0, output1);
+            CopyEvaluationOutput(registers, batchSize, 1, output2);
+            CopyEvaluationOutput(registers, batchSize, 2, output3);
+        }
+
+        /// <summary>
+        /// Evaluates four scalar graphs over three-dimensional coordinates.
+        /// </summary>
+        public static void Evaluate3D(
+            NoiseScalar channel1,
+            NoiseScalar channel2,
+            NoiseScalar channel3,
+            NoiseScalar channel4,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            ReadOnlySpan<float> zCoords,
+            Span<float> output1,
+            Span<float> output2,
+            Span<float> output3,
+            Span<float> output4,
+            int seed = 0)
+        {
+            float[] registers = Evaluate3D(
+                new NoiseScalar[] { channel1, channel2, channel3, channel4 },
+                xCoords,
+                yCoords,
+                zCoords,
+                seed);
+            int batchSize = xCoords.Length;
+            CopyEvaluationOutput(registers, batchSize, 0, output1);
+            CopyEvaluationOutput(registers, batchSize, 1, output2);
+            CopyEvaluationOutput(registers, batchSize, 2, output3);
+            CopyEvaluationOutput(registers, batchSize, 3, output4);
+        }
+
+        static float[] Evaluate2D(
+            NoiseScalar[] channels,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            int seed)
+        {
+            ValidateEvaluationBufferLength(yCoords.Length, xCoords.Length, nameof(yCoords));
+
+            CompiledNoiseNode compiled = NoiseNodeEval.Compile(channels);
+            ByteCodeInfo info =
+                System.Runtime.InteropServices.MemoryMarshal.Read<ByteCodeInfo>(compiled.ByteCode);
+            if (info.InputCount > 2)
+            {
+                throw new ArgumentException(
+                    $"Cannot evaluate a graph with {info.InputCount} coordinate inputs as a 2D graph.",
+                    nameof(channels));
+            }
+
+            int batchSize = xCoords.Length;
+            float[] registers = new float[checked(info.RegisterCount * batchSize)];
+            if (info.InputCount >= 1)
+                xCoords.CopyTo(registers.AsSpan(0, batchSize));
+            if (info.InputCount >= 2)
+                yCoords.CopyTo(registers.AsSpan(batchSize, batchSize));
+            NoiseNodeEval.EvaluateByteCode(compiled.ByteCode, seed, registers, batchSize);
+            return registers;
+        }
+
+        static float[] Evaluate3D(
+            NoiseScalar[] channels,
+            ReadOnlySpan<float> xCoords,
+            ReadOnlySpan<float> yCoords,
+            ReadOnlySpan<float> zCoords,
+            int seed)
+        {
+            ValidateEvaluationBufferLength(yCoords.Length, xCoords.Length, nameof(yCoords));
+            ValidateEvaluationBufferLength(zCoords.Length, xCoords.Length, nameof(zCoords));
+
+            CompiledNoiseNode compiled = NoiseNodeEval.Compile(channels);
+            ByteCodeInfo info =
+                System.Runtime.InteropServices.MemoryMarshal.Read<ByteCodeInfo>(compiled.ByteCode);
+
+            int batchSize = xCoords.Length;
+            float[] registers = new float[checked(info.RegisterCount * batchSize)];
+            if (info.InputCount >= 1)
+                xCoords.CopyTo(registers.AsSpan(0, batchSize));
+            if (info.InputCount >= 2)
+                yCoords.CopyTo(registers.AsSpan(batchSize, batchSize));
+            if (info.InputCount >= 3)
+                zCoords.CopyTo(registers.AsSpan(batchSize * 2, batchSize));
+            NoiseNodeEval.EvaluateByteCode(compiled.ByteCode, seed, registers, batchSize);
+            return registers;
+        }
+
+        static void CopyEvaluationOutput(
+            float[] registers,
+            int batchSize,
+            int outputIndex,
+            Span<float> output)
+        {
+            ValidateEvaluationBufferLength(output.Length, batchSize, nameof(output));
+            registers.AsSpan(outputIndex * batchSize, batchSize).CopyTo(output);
+        }
+
+        static void ValidateEvaluationBufferLength(int actual, int expected, string paramName)
+        {
+            if (actual != expected)
+            {
+                throw new ArgumentException(
+                    $"Expected buffer length {actual} to equal coordinate buffer length {expected}.",
+                    paramName);
+            }
+        }
     }
 
     /// <summary>

@@ -10,7 +10,7 @@ namespace NoiseDotNet
     /// <summary>
     /// Compilation and evaluation utilities for NoiseNode bytecode.
     /// </summary>
-    public static class NoiseNodeByteCode
+    public static class NoiseNodeEval
     {
         const byte CopyOpCode = byte.MaxValue;
 
@@ -24,7 +24,7 @@ namespace NoiseDotNet
         /// <param name="seed">Evaluation seed combined with each compiled noise operation's seed.</param>
         /// <param name="registerSpace">Storage for all input, temporary, constant, and output registers.</param>
         /// <param name="batchSize">Number of values evaluated in each register.</param>
-        public static void Evaluate(ReadOnlySpan<byte> bytecode, int seed, Span<float> registerSpace, int batchSize)
+        public static void EvaluateByteCode(ReadOnlySpan<byte> bytecode, int seed, Span<float> registerSpace, int batchSize)
         {
             if (batchSize < 0)
             {
@@ -475,6 +475,6 @@ namespace NoiseDotNet
         /// Returns a human-readable disassembly of this compiled graph.
         /// </summary>
         public override string ToString() =>
-            ByteCode is null ? "Uninitialized CompiledNoiseNode" : NoiseNodeByteCode.ToString(ByteCode);
+            ByteCode is null ? "Uninitialized CompiledNoiseNode" : NoiseNodeEval.ToString(ByteCode);
     }
 }
