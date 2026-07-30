@@ -6,14 +6,14 @@ namespace NoiseDotNet
     /// <summary>
     /// Stateful NoiseNode compiler.
     /// </summary>
-    public sealed class ByteCodeCompiler
+    public sealed class NoiseGraphByteCodeCompiler
     {
         /// <summary>Compiles a noise graph into a byte code.</summary>
-        public static NoiseGraphByteCode Compile(params NoiseScalar[] outputs) => new ByteCodeCompiler(outputs).Compile();
+        public static NoiseGraphByteCode Compile(params NoiseScalar[] outputs) => new NoiseGraphByteCodeCompiler(outputs).Compile();
 
         /// <summary>Returns the assigned seed offsets for each noise function in the noise graph.
         /// Add seed offset to main eval seed to get the noise function's seed.</summary>
-        public static Dictionary<NoiseNode, int> GetNoiseSeeds(params NoiseScalar[] outputs) => new ByteCodeCompiler(outputs).GetNoiseSeeds();
+        public static Dictionary<NoiseNode, int> GetNoiseSeeds(params NoiseScalar[] outputs) => new NoiseGraphByteCodeCompiler(outputs).GetNoiseSeeds();
 
         readonly NoiseScalar[] _outputs;
         readonly Dictionary<NoiseNode, VisitState> _visitStates = new();
@@ -33,7 +33,7 @@ namespace NoiseDotNet
         int _maxRegisterCount;
         bool _graphInitialized;
 
-        ByteCodeCompiler(NoiseScalar[] outputs)
+        NoiseGraphByteCodeCompiler(NoiseScalar[] outputs)
         {
             _outputs = outputs;
             ArgumentNullException.ThrowIfNull(outputs);
@@ -220,7 +220,7 @@ namespace NoiseDotNet
                 return;
             }
 
-            if (!ByteCodeEval.IsExecutable(node.Type))
+            if (!NoiseGraphByteCodeEval.IsExecutable(node.Type))
                 throw new NotSupportedException($"Cannot compile NoiseNodeType {node.Type}.");
 
             if (TryCompileAccumulatedNoise(node))
@@ -589,7 +589,7 @@ namespace NoiseDotNet
 
         internal static void AppendCopy(List<byte> bytecode, int source, int destination)
         {
-            Append(bytecode, ByteCodeEval.CopyOpCode);
+            Append(bytecode, NoiseGraphByteCodeEval.CopyOpCode);
             Append(bytecode, source);
             Append(bytecode, destination);
         }

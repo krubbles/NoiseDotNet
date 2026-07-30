@@ -8,7 +8,7 @@ namespace NoiseDotNet
     /// <summary>
     /// Compilation and evaluation utilities for NoiseNode bytecode.
     /// </summary>
-    public static class ByteCodeEval
+    public static class NoiseGraphByteCodeEval
     {
         public const byte CopyOpCode = byte.MaxValue;
 

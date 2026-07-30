@@ -1,6 +1,6 @@
 namespace NoiseDotNet
 {
-    public sealed partial class NoiseNode
+    public static class NoiseGraph
     {
         /// <summary>
         /// Checks if a number is real, throwing an exception if it is infinity or NaN.
@@ -279,8 +279,8 @@ namespace NoiseDotNet
 
         static NoiseNode InlineConstantCommunative(NoiseNode node)
         {
-            NoiseScalar left = node._inputs[0];
-            NoiseScalar right = node._inputs[1];
+            NoiseScalar left = node.Inputs[0];
+            NoiseScalar right = node.Inputs[1];
 
             if (left.IsConstant && right.IsConstant)
                 return InlineConstant(node);
@@ -319,11 +319,11 @@ namespace NoiseDotNet
                 constant = default;
 
                 NoiseNode operandNode = operand.Node;
-                if (operandNode.Type != operatorType || operandNode._inputs.Length != 2)
+                if (operandNode.Type != operatorType || operandNode.Inputs.Length != 2)
                     return false;
 
-                NoiseScalar left = operandNode._inputs[0];
-                NoiseScalar right = operandNode._inputs[1];
+                NoiseScalar left = operandNode.Inputs[0];
+                NoiseScalar right = operandNode.Inputs[1];
                 if (left.IsConstant == right.IsConstant)
                     return false;
 
@@ -335,7 +335,7 @@ namespace NoiseDotNet
 
         static NoiseNode InlineConstant(NoiseNode node)
         {
-            foreach (NoiseScalar input in node._inputs)
+            foreach (NoiseScalar input in node.Inputs)
                 if (!input.IsConstant)
                     return node;
 
@@ -747,34 +747,34 @@ namespace NoiseDotNet
     public readonly partial struct NoiseScalar
     {
         public static implicit operator NoiseScalar((NoiseNode node, int channelIndex) pair) => new(pair.node, pair.channelIndex);
-        public static NoiseScalar operator +(NoiseScalar a, NoiseScalar b) => NoiseNode.Add(a, b);
-        public static NoiseScalar operator -(NoiseScalar value) => NoiseNode.Negate(value);
-        public static NoiseScalar operator -(NoiseScalar a, NoiseScalar b) => NoiseNode.Subtract(a, b);
-        public static NoiseScalar operator *(NoiseScalar a, NoiseScalar b) => NoiseNode.Multiply(a, b);
-        public static NoiseScalar operator /(NoiseScalar a, NoiseScalar b) => NoiseNode.Divide(a, b);
+        public static NoiseScalar operator +(NoiseScalar a, NoiseScalar b) => NoiseGraph.Add(a, b);
+        public static NoiseScalar operator -(NoiseScalar value) => NoiseGraph.Negate(value);
+        public static NoiseScalar operator -(NoiseScalar a, NoiseScalar b) => NoiseGraph.Subtract(a, b);
+        public static NoiseScalar operator *(NoiseScalar a, NoiseScalar b) => NoiseGraph.Multiply(a, b);
+        public static NoiseScalar operator /(NoiseScalar a, NoiseScalar b) => NoiseGraph.Divide(a, b);
     }
 
     public readonly partial struct NoiseVector2
     {
-        public static NoiseVector2 operator +(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Add(a, b);
-        public static NoiseVector2 operator -(NoiseVector2 value) => NoiseNode.Negate(value);
-        public static NoiseVector2 operator -(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Subtract(a, b);
-        public static NoiseVector2 operator *(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Multiply(a, b);
-        public static NoiseVector2 operator *(NoiseVector2 vector, NoiseScalar scalar) => NoiseNode.Multiply(vector, scalar);
-        public static NoiseVector2 operator *(NoiseScalar scalar, NoiseVector2 vector) => NoiseNode.Multiply(vector, scalar);
-        public static NoiseVector2 operator /(NoiseVector2 a, NoiseVector2 b) => NoiseNode.Divide(a, b);
-        public static NoiseVector2 operator /(NoiseVector2 vector, NoiseScalar scalar) => NoiseNode.Divide(vector, scalar);
+        public static NoiseVector2 operator +(NoiseVector2 a, NoiseVector2 b) => NoiseGraph.Add(a, b);
+        public static NoiseVector2 operator -(NoiseVector2 value) => NoiseGraph.Negate(value);
+        public static NoiseVector2 operator -(NoiseVector2 a, NoiseVector2 b) => NoiseGraph.Subtract(a, b);
+        public static NoiseVector2 operator *(NoiseVector2 a, NoiseVector2 b) => NoiseGraph.Multiply(a, b);
+        public static NoiseVector2 operator *(NoiseVector2 vector, NoiseScalar scalar) => NoiseGraph.Multiply(vector, scalar);
+        public static NoiseVector2 operator *(NoiseScalar scalar, NoiseVector2 vector) => NoiseGraph.Multiply(vector, scalar);
+        public static NoiseVector2 operator /(NoiseVector2 a, NoiseVector2 b) => NoiseGraph.Divide(a, b);
+        public static NoiseVector2 operator /(NoiseVector2 vector, NoiseScalar scalar) => NoiseGraph.Divide(vector, scalar);
     }
 
     public readonly partial struct NoiseVector3
     {
-        public static NoiseVector3 operator +(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Add(a, b);
-        public static NoiseVector3 operator -(NoiseVector3 value) => NoiseNode.Negate(value);
-        public static NoiseVector3 operator -(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Subtract(a, b);
-        public static NoiseVector3 operator *(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Multiply(a, b);
-        public static NoiseVector3 operator *(NoiseVector3 vector, NoiseScalar scalar) => NoiseNode.Multiply(vector, scalar);
-        public static NoiseVector3 operator *(NoiseScalar scalar, NoiseVector3 vector) => NoiseNode.Multiply(vector, scalar);
-        public static NoiseVector3 operator /(NoiseVector3 a, NoiseVector3 b) => NoiseNode.Divide(a, b);
-        public static NoiseVector3 operator /(NoiseVector3 vector, NoiseScalar scalar) => NoiseNode.Divide(vector, scalar);
+        public static NoiseVector3 operator +(NoiseVector3 a, NoiseVector3 b) => NoiseGraph.Add(a, b);
+        public static NoiseVector3 operator -(NoiseVector3 value) => NoiseGraph.Negate(value);
+        public static NoiseVector3 operator -(NoiseVector3 a, NoiseVector3 b) => NoiseGraph.Subtract(a, b);
+        public static NoiseVector3 operator *(NoiseVector3 a, NoiseVector3 b) => NoiseGraph.Multiply(a, b);
+        public static NoiseVector3 operator *(NoiseVector3 vector, NoiseScalar scalar) => NoiseGraph.Multiply(vector, scalar);
+        public static NoiseVector3 operator *(NoiseScalar scalar, NoiseVector3 vector) => NoiseGraph.Multiply(vector, scalar);
+        public static NoiseVector3 operator /(NoiseVector3 a, NoiseVector3 b) => NoiseGraph.Divide(a, b);
+        public static NoiseVector3 operator /(NoiseVector3 vector, NoiseScalar scalar) => NoiseGraph.Divide(vector, scalar);
     }
 }

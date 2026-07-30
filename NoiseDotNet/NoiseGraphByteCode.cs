@@ -105,7 +105,7 @@ namespace NoiseDotNet
                 }
 
                 NoiseNodeType type = (NoiseNodeType)opCode;
-                if (!ByteCodeEval.IsExecutable(type))
+                if (!NoiseGraphByteCodeEval.IsExecutable(type))
                     throw new ArgumentException($"Bytecode contains unsupported opcode {opCode}.", nameof(bytecode));
 
                 result.Append(type);
