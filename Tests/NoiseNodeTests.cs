@@ -81,7 +81,7 @@ namespace Tests
             NoiseScalar leftNoise = CreatePerlin2D(coordinates);
             NoiseScalar rightNoise = CreatePerlin2D(coordinates);
             NoiseScalar sum = leftNoise + rightNoise;
-            Dictionary<NoiseGraph, int> combinedSeeds = NoiseGraphByteCodeCompiler.GetNoiseSeeds(sum);
+            Dictionary<NoiseNode, int> combinedSeeds = NoiseGraphByteCodeCompiler.GetNoiseSeeds(sum);
 
             NoiseGraphByteCode combinedGraph = NoiseGraphByteCodeCompiler.Compile(sum);
             NoiseGraphByteCode leftGraph = NoiseGraphByteCodeCompiler.Compile(leftNoise);
@@ -111,7 +111,7 @@ namespace Tests
             NoiseScalar octave2 = CreatePerlin2D(Scale(coordinates, 2f, 3f));
             NoiseScalar fbm = octave0 + octave1 * NoiseGraph.Constant(0.5f) +
                               octave2 * NoiseGraph.Constant(0.25f);
-            Dictionary<NoiseGraph, int> seeds = NoiseGraphByteCodeCompiler.GetNoiseSeeds(fbm);
+            Dictionary<NoiseNode, int> seeds = NoiseGraphByteCodeCompiler.GetNoiseSeeds(fbm);
             NoiseGraphByteCode compiled = NoiseGraphByteCodeCompiler.Compile(fbm);
             const int evaluationSeed = 73;
 
@@ -210,7 +210,7 @@ namespace Tests
             float[] doubledOutput = new float[XCoordinates.Length];
             float[] offsetOutput = new float[XCoordinates.Length];
 
-            NoiseGraph.Evaluate2D(
+            NoiseGraphByteCodeEval.Evaluate2D(
                 noise,
                 negated,
                 doubled,
@@ -246,7 +246,7 @@ namespace Tests
             float[] doubledOutput = new float[XCoordinates.Length];
             float[] offsetOutput = new float[XCoordinates.Length];
 
-            NoiseGraph.Evaluate3D(
+            NoiseGraphByteCodeEval.Evaluate3D(
                 noise,
                 negated,
                 doubled,
