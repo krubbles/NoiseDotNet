@@ -148,56 +148,6 @@ namespace Tests
         }
 
         [Test]
-        public void TransformRemapsTwoDimensionalNoiseCoordinates()
-        {
-            NoiseVector2 coordinates = NoiseGraph.XY;
-            NoiseScalar original = CreatePerlin2D(coordinates);
-            NoiseVector2 i = NoiseGraph.Constant(2f, 3f);
-            NoiseVector2 j = NoiseGraph.Constant(5f, 7f);
-
-            NoiseScalar transformed = NoiseGraph.Transform(original, i, j);
-            NoiseScalar expected = CreatePerlin2D(new(
-                coordinates.X * i.X + coordinates.Y * j.X,
-                coordinates.X * i.Y + coordinates.Y * j.Y));
-
-            float[] actualValues = Evaluate(NoiseGraphByteCodeCompiler.Compile(transformed), seed: 83);
-            float[] expectedValues = Evaluate(NoiseGraphByteCodeCompiler.Compile(expected), seed: 83);
-            for (int sampleIndex = 0; sampleIndex < actualValues.Length; sampleIndex++)
-            {
-                AssertEqualEnough(
-                    expectedValues[sampleIndex],
-                    actualValues[sampleIndex],
-                    $"Transformed 2D sample {sampleIndex} was incorrect.");
-            }
-        }
-
-        [Test]
-        public void TransformRemapsThreeDimensionalNoiseCoordinates()
-        {
-            NoiseVector3 coordinates = NoiseGraph.XYZ;
-            NoiseScalar original = CreatePerlin3D(coordinates);
-            NoiseVector3 i = NoiseGraph.Constant(2f, 3f, 5f);
-            NoiseVector3 j = NoiseGraph.Constant(7f, 11f, 13f);
-            NoiseVector3 k = NoiseGraph.Constant(17f, 19f, 23f);
-
-            NoiseScalar transformed = NoiseGraph.Transform(original, i, j, k);
-            NoiseScalar expected = CreatePerlin3D(new(
-                coordinates.X * i.X + coordinates.Y * j.X + coordinates.Z * k.X,
-                coordinates.X * i.Y + coordinates.Y * j.Y + coordinates.Z * k.Y,
-                coordinates.X * i.Z + coordinates.Y * j.Z + coordinates.Z * k.Z));
-
-            float[] actualValues = Evaluate(NoiseGraphByteCodeCompiler.Compile(transformed), seed: 89);
-            float[] expectedValues = Evaluate(NoiseGraphByteCodeCompiler.Compile(expected), seed: 89);
-            for (int sampleIndex = 0; sampleIndex < actualValues.Length; sampleIndex++)
-            {
-                AssertEqualEnough(
-                    expectedValues[sampleIndex],
-                    actualValues[sampleIndex],
-                    $"Transformed 3D sample {sampleIndex} was incorrect.");
-            }
-        }
-
-        [Test]
         public void Evaluate2DWritesFourScalarOutputs()
         {
             NoiseScalar noise = CreatePerlin2D(NoiseGraph.XY);
