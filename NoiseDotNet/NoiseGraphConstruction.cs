@@ -753,6 +753,7 @@ namespace NoiseDotNet
     public readonly partial struct NoiseScalar
     {
         public static implicit operator NoiseScalar((NoiseNode node, int channelIndex) pair) => new(pair.node, pair.channelIndex);
+        public static implicit operator NoiseScalar(float value) => NoiseGraph.Constant(value);
         public static NoiseScalar operator +(NoiseScalar a, NoiseScalar b) => NoiseGraph.Add(a, b);
         public static NoiseScalar operator -(NoiseScalar value) => NoiseGraph.Negate(value);
         public static NoiseScalar operator -(NoiseScalar a, NoiseScalar b) => NoiseGraph.Subtract(a, b);
@@ -762,6 +763,9 @@ namespace NoiseDotNet
 
     public readonly partial struct NoiseVector2
     {
+        public static implicit operator NoiseVector2((float x, float y) value) =>
+            NoiseGraph.Constant(value.x, value.y);
+
         public static NoiseVector2 operator +(NoiseVector2 a, NoiseVector2 b) => NoiseGraph.Add(a, b);
         public static NoiseVector2 operator -(NoiseVector2 value) => NoiseGraph.Negate(value);
         public static NoiseVector2 operator -(NoiseVector2 a, NoiseVector2 b) => NoiseGraph.Subtract(a, b);
@@ -774,6 +778,9 @@ namespace NoiseDotNet
 
     public readonly partial struct NoiseVector3
     {
+        public static implicit operator NoiseVector3((float x, float y, float z) value) =>
+            NoiseGraph.Constant(value.x, value.y, value.z);
+
         public static NoiseVector3 operator +(NoiseVector3 a, NoiseVector3 b) => NoiseGraph.Add(a, b);
         public static NoiseVector3 operator -(NoiseVector3 value) => NoiseGraph.Negate(value);
         public static NoiseVector3 operator -(NoiseVector3 a, NoiseVector3 b) => NoiseGraph.Subtract(a, b);
