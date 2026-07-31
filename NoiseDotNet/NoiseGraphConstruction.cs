@@ -348,8 +348,17 @@ namespace NoiseDotNet
             return node;
         }
 
+        static bool IsConstant(NoiseScalar value, float expected) =>
+            value.IsConstant &&
+            value.Node.ConstantValues[value.ChannelIndex] == expected;
+
         public static NoiseScalar Add(NoiseScalar a, NoiseScalar b)
         {
+            if (IsConstant(a, 0f))
+                return b;
+            if (IsConstant(b, 0f))
+                return a;
+
             NoiseNode result = new(NoiseNodeType.Add__a_b__sum, a, b);
             result = InlineConstantCommunative(result);
             return result.AsScalar;
@@ -702,6 +711,13 @@ namespace NoiseDotNet
 
         public static NoiseScalar Multiply(NoiseScalar a, NoiseScalar b)
         {
+            if (IsConstant(a, 0f) || IsConstant(b, 0f))
+                return Zero;
+            if (IsConstant(a, 1f))
+                return b;
+            if (IsConstant(b, 1f))
+                return a;
+
             NoiseNode result = new(NoiseNodeType.Multiply__a_b__product, a, b);
             result = InlineConstantCommunative(result);
             return result.AsScalar;

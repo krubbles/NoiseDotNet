@@ -32,7 +32,33 @@ namespace Tests
             AssertBinaryNodes(NoiseGraph.Add(vector3A, vector3B), NoiseNodeType.Add__a_b__sum, vector3A, vector3B);
             AssertBinaryNodes(vector3A + vector3B, NoiseNodeType.Add__a_b__sum, vector3A, vector3B);
 
+            AssertAddIdentityOptimizations(scalarA, vector2A, vector3A);
             AssertCompilesAccurately(NoiseGraph.Add(scalarA, scalarB), x => x + 2.5f);
+        }
+
+        static void AssertAddIdentityOptimizations(
+            NoiseScalar scalar,
+            NoiseVector2 vector2,
+            NoiseVector3 vector3)
+        {
+            Assert.That(NoiseGraph.Add(scalar, 0f), Is.EqualTo(scalar));
+            Assert.That(NoiseGraph.Add(0f, scalar), Is.EqualTo(scalar));
+            Assert.That(scalar + 0f, Is.EqualTo(scalar));
+            Assert.That(0f + scalar, Is.EqualTo(scalar));
+
+            NoiseVector2 offset = (0f, 2f);
+            NoiseVector2 vector2ByComponents = NoiseGraph.Add(vector2, offset);
+            Assert.That(vector2ByComponents.X, Is.EqualTo(vector2.X));
+            AssertBinaryNode(
+                vector2ByComponents.Y,
+                NoiseNodeType.Add__a_b__sum,
+                vector2.Y,
+                offset.Y);
+
+            NoiseVector3 unchangedVector3 = vector3 + (0f, 0f, 0f);
+            Assert.That(unchangedVector3.X, Is.EqualTo(vector3.X));
+            Assert.That(unchangedVector3.Y, Is.EqualTo(vector3.Y));
+            Assert.That(unchangedVector3.Z, Is.EqualTo(vector3.Z));
         }
 
         [Test]
@@ -76,7 +102,42 @@ namespace Tests
             AssertVectorScalarMultiply(vector3A * scalarB, vector3A, scalarB);
             AssertVectorScalarMultiply(scalarB * vector3A, vector3A, scalarB);
 
+            AssertMultiplyIdentityOptimizations(scalarA, vector2A, vector3A);
             AssertCompilesAccurately(NoiseGraph.Multiply(scalarA, scalarB), x => x * -1.5f);
+        }
+
+        static void AssertMultiplyIdentityOptimizations(
+            NoiseScalar scalar,
+            NoiseVector2 vector2,
+            NoiseVector3 vector3)
+        {
+            Assert.That(NoiseGraph.Multiply(scalar, 0f).Node, Is.SameAs(NoiseGraph.Zero.Node));
+            Assert.That(NoiseGraph.Multiply(0f, scalar).Node, Is.SameAs(NoiseGraph.Zero.Node));
+            Assert.That((scalar * 0f).Node, Is.SameAs(NoiseGraph.Zero.Node));
+            Assert.That((0f * scalar).Node, Is.SameAs(NoiseGraph.Zero.Node));
+
+            Assert.That(NoiseGraph.Multiply(scalar, 1f), Is.EqualTo(scalar));
+            Assert.That(NoiseGraph.Multiply(1f, scalar), Is.EqualTo(scalar));
+            Assert.That(scalar * 1f, Is.EqualTo(scalar));
+            Assert.That(1f * scalar, Is.EqualTo(scalar));
+
+            NoiseVector2 vector2ByComponents = NoiseGraph.Multiply(vector2, (0f, 1f));
+            Assert.That(vector2ByComponents.X.Node, Is.SameAs(NoiseGraph.Zero.Node));
+            Assert.That(vector2ByComponents.Y, Is.EqualTo(vector2.Y));
+
+            NoiseVector3 vector3ByComponents = NoiseGraph.Multiply(vector3, (1f, 0f, 1f));
+            Assert.That(vector3ByComponents.X, Is.EqualTo(vector3.X));
+            Assert.That(vector3ByComponents.Y.Node, Is.SameAs(NoiseGraph.Zero.Node));
+            Assert.That(vector3ByComponents.Z, Is.EqualTo(vector3.Z));
+
+            NoiseVector2 zeroVector2 = vector2 * 0f;
+            Assert.That(zeroVector2.X.Node, Is.SameAs(NoiseGraph.Zero.Node));
+            Assert.That(zeroVector2.Y.Node, Is.SameAs(NoiseGraph.Zero.Node));
+
+            NoiseVector3 unchangedVector3 = 1f * vector3;
+            Assert.That(unchangedVector3.X, Is.EqualTo(vector3.X));
+            Assert.That(unchangedVector3.Y, Is.EqualTo(vector3.Y));
+            Assert.That(unchangedVector3.Z, Is.EqualTo(vector3.Z));
         }
 
         static void AssertVectorScalarMultiply(
