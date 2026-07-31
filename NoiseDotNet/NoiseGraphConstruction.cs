@@ -138,7 +138,7 @@ namespace NoiseDotNet
         /// function's coordinates transformed by the basis vectors <paramref name="i"/> and
         /// <paramref name="j"/>.
         /// </summary>
-        public static NoiseScalar Transform(NoiseScalar original, NoiseVector2 i, NoiseVector2 j) =>
+        public static NoiseScalar Transform(this NoiseScalar original, NoiseVector2 i, NoiseVector2 j) =>
             Transform(
                 new NoiseScalar[] { original },
                 new NoiseScalar[][]
@@ -148,7 +148,7 @@ namespace NoiseDotNet
                 })[0];
 
         /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector2, NoiseVector2)"/>
-        public static NoiseVector2 Transform(NoiseVector2 original, NoiseVector2 i, NoiseVector2 j)
+        public static NoiseVector2 Transform(this NoiseVector2 original, NoiseVector2 i, NoiseVector2 j)
         {
             NoiseScalar[] transformed = Transform(
                 new NoiseScalar[] { original.X, original.Y },
@@ -161,7 +161,7 @@ namespace NoiseDotNet
         }
 
         /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector2, NoiseVector2)"/>
-        public static NoiseVector3 Transform(NoiseVector3 original, NoiseVector2 i, NoiseVector2 j)
+        public static NoiseVector3 Transform(this NoiseVector3 original, NoiseVector2 i, NoiseVector2 j)
         {
             NoiseScalar[] transformed = Transform(
                 new NoiseScalar[] { original.X, original.Y, original.Z },
@@ -178,7 +178,7 @@ namespace NoiseDotNet
         /// function's coordinates transformed by the basis vectors <paramref name="i"/>,
         /// <paramref name="j"/>, and <paramref name="k"/>.
         /// </summary>
-        public static NoiseScalar Transform(NoiseScalar original, NoiseVector3 i, NoiseVector3 j, NoiseVector3 k) =>
+        public static NoiseScalar Transform(this NoiseScalar original, NoiseVector3 i, NoiseVector3 j, NoiseVector3 k) =>
             Transform(
                 new NoiseScalar[] { original },
                 new NoiseScalar[][]
@@ -189,7 +189,7 @@ namespace NoiseDotNet
                 })[0];
 
         /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector3, NoiseVector3, NoiseVector3)"/>
-        public static NoiseVector2 Transform(NoiseVector2 original, NoiseVector3 i, NoiseVector3 j, NoiseVector3 k)
+        public static NoiseVector2 Transform(this NoiseVector2 original, NoiseVector3 i, NoiseVector3 j, NoiseVector3 k)
         {
             NoiseScalar[] transformed = Transform(
                 new NoiseScalar[] { original.X, original.Y },
@@ -203,7 +203,7 @@ namespace NoiseDotNet
         }
 
         /// <inheritdoc cref="Transform(NoiseScalar, NoiseVector3, NoiseVector3, NoiseVector3)"/>
-        public static NoiseVector3 Transform(NoiseVector3 original,NoiseVector3 i, NoiseVector3 j, NoiseVector3 k)
+        public static NoiseVector3 Transform(this NoiseVector3 original,NoiseVector3 i, NoiseVector3 j, NoiseVector3 k)
         {
             NoiseScalar[] transformed = Transform(
                 new NoiseScalar[] { original.X, original.Y, original.Z },
@@ -220,60 +220,60 @@ namespace NoiseDotNet
         /// Stretches every two-dimensional noise function in <paramref name="original"/> along
         /// its x and y axes.
         /// </summary>
-        public static NoiseScalar Stretch(NoiseScalar original, NoiseScalar x, NoiseScalar y) =>
+        public static NoiseScalar Stretch(this NoiseScalar original, NoiseScalar x, NoiseScalar y) =>
             Transform(original, new(x, Zero), new(Zero, y));
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar)"/>
-        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseScalar x, NoiseScalar y) =>
+        public static NoiseVector2 Stretch(this NoiseVector2 original, NoiseScalar x, NoiseScalar y) =>
             Transform(original, new(x, Zero), new(Zero, y));
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar)"/>
-        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseScalar x, NoiseScalar y) =>
+        public static NoiseVector3 Stretch(this NoiseVector3 original, NoiseScalar x, NoiseScalar y) =>
             Transform(original, new(x, Zero), new(Zero, y));
 
         /// <summary>
         /// Stretches every two-dimensional noise function in <paramref name="original"/> by the
         /// corresponding component of <paramref name="scale"/>.
         /// </summary>
-        public static NoiseScalar Stretch(NoiseScalar original, NoiseVector2 scale) =>
+        public static NoiseScalar Stretch(this NoiseScalar original, NoiseVector2 scale) =>
             Stretch(original, scale.X, scale.Y);
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector2)"/>
-        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseVector2 scale) =>
+        public static NoiseVector2 Stretch(this NoiseVector2 original, NoiseVector2 scale) =>
             Stretch(original, scale.X, scale.Y);
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector2)"/>
-        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseVector2 scale) =>
+        public static NoiseVector3 Stretch(this NoiseVector3 original, NoiseVector2 scale) =>
             Stretch(original, scale.X, scale.Y);
 
         /// <summary>
         /// Stretches every three-dimensional noise function in <paramref name="original"/> along
         /// its x, y, and z axes.
         /// </summary>
-        public static NoiseScalar Stretch(NoiseScalar original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
+        public static NoiseScalar Stretch(this NoiseScalar original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
             Transform(original, new(x, Zero, Zero), new(Zero, y, Zero), new(Zero, Zero, z));
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar, NoiseScalar)"/>
-        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
+        public static NoiseVector2 Stretch(this NoiseVector2 original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
             Transform(original, new(x, Zero, Zero), new(Zero, y, Zero), new(Zero, Zero, z));
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseScalar, NoiseScalar, NoiseScalar)"/>
-        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
+        public static NoiseVector3 Stretch(this NoiseVector3 original, NoiseScalar x, NoiseScalar y, NoiseScalar z) =>
             Transform(original, new(x, Zero, Zero), new(Zero, y, Zero), new(Zero, Zero, z));
 
         /// <summary>
         /// Stretches every three-dimensional noise function in <paramref name="original"/> by the
         /// corresponding component of <paramref name="scale"/>.
         /// </summary>
-        public static NoiseScalar Stretch(NoiseScalar original, NoiseVector3 scale) =>
+        public static NoiseScalar Stretch(this NoiseScalar original, NoiseVector3 scale) =>
             Stretch(original, scale.X, scale.Y, scale.Z);
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector3)"/>
-        public static NoiseVector2 Stretch(NoiseVector2 original, NoiseVector3 scale) =>
+        public static NoiseVector2 Stretch(this NoiseVector2 original, NoiseVector3 scale) =>
             Stretch(original, scale.X, scale.Y, scale.Z);
 
         /// <inheritdoc cref="Stretch(NoiseScalar, NoiseVector3)"/>
-        public static NoiseVector3 Stretch(NoiseVector3 original, NoiseVector3 scale) =>
+        public static NoiseVector3 Stretch(this NoiseVector3 original, NoiseVector3 scale) =>
             Stretch(original, scale.X, scale.Y, scale.Z);
 
         static NoiseScalar[] Transform(NoiseScalar[] originals, NoiseScalar[][] basis)
@@ -400,7 +400,7 @@ namespace NoiseDotNet
             value.IsConstant &&
             value.Node.ConstantValues[value.ChannelIndex] == expected;
 
-        public static NoiseScalar Add(NoiseScalar a, NoiseScalar b)
+        public static NoiseScalar Add(this NoiseScalar a, NoiseScalar b)
         {
             if (IsConstant(a, 0f))
                 return b;
@@ -412,11 +412,11 @@ namespace NoiseDotNet
             return result.AsScalar;
         }
 
-        public static NoiseVector2 Add(NoiseVector2 a, NoiseVector2 b) => new(
+        public static NoiseVector2 Add(this NoiseVector2 a, NoiseVector2 b) => new(
             Add(a.X, b.X),
             Add(a.Y, b.Y));
 
-        public static NoiseVector3 Add(NoiseVector3 a, NoiseVector3 b) => new(
+        public static NoiseVector3 Add(this NoiseVector3 a, NoiseVector3 b) => new(
             Add(a.X, b.X),
             Add(a.Y, b.Y),
             Add(a.Z, b.Z));
@@ -424,7 +424,7 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns the smaller of two scalar values.
         /// </summary>
-        public static NoiseScalar Min(NoiseScalar a, NoiseScalar b)
+        public static NoiseScalar Min(this NoiseScalar a, NoiseScalar b)
         {
             NoiseNode result = new(NoiseNodeType.Min__a_b__min, a, b);
             result = InlineConstantCommunative(result);
@@ -434,14 +434,14 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns the component-wise minimum of two vectors.
         /// </summary>
-        public static NoiseVector2 Min(NoiseVector2 a, NoiseVector2 b) => new(
+        public static NoiseVector2 Min(this NoiseVector2 a, NoiseVector2 b) => new(
             Min(a.X, b.X),
             Min(a.Y, b.Y));
 
         /// <summary>
         /// Returns the component-wise minimum of two vectors.
         /// </summary>
-        public static NoiseVector3 Min(NoiseVector3 a, NoiseVector3 b) => new(
+        public static NoiseVector3 Min(this NoiseVector3 a, NoiseVector3 b) => new(
             Min(a.X, b.X),
             Min(a.Y, b.Y),
             Min(a.Z, b.Z));
@@ -449,7 +449,7 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns the larger of two scalar values.
         /// </summary>
-        public static NoiseScalar Max(NoiseScalar a, NoiseScalar b)
+        public static NoiseScalar Max(this NoiseScalar a, NoiseScalar b)
         {
             NoiseNode result = new(NoiseNodeType.Max__a_b__max, a, b);
             result = InlineConstantCommunative(result);
@@ -459,14 +459,14 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns the component-wise maximum of two vectors.
         /// </summary>
-        public static NoiseVector2 Max(NoiseVector2 a, NoiseVector2 b) => new(
+        public static NoiseVector2 Max(this NoiseVector2 a, NoiseVector2 b) => new(
             Max(a.X, b.X),
             Max(a.Y, b.Y));
 
         /// <summary>
         /// Returns the component-wise maximum of two vectors.
         /// </summary>
-        public static NoiseVector3 Max(NoiseVector3 a, NoiseVector3 b) => new(
+        public static NoiseVector3 Max(this NoiseVector3 a, NoiseVector3 b) => new(
             Max(a.X, b.X),
             Max(a.Y, b.Y),
             Max(a.Z, b.Z));
@@ -474,20 +474,20 @@ namespace NoiseDotNet
         /// <summary>
         /// Raises a scalar value to a scalar power.
         /// </summary>
-        public static NoiseScalar Pow(NoiseScalar value, NoiseScalar power) =>
+        public static NoiseScalar Pow(this NoiseScalar value, NoiseScalar power) =>
             new NoiseNode(NoiseNodeType.Pow__value_power__result, value, power).AsScalar;
 
         /// <summary>
         /// Raises each component of a vector to the corresponding component of another vector.
         /// </summary>
-        public static NoiseVector2 Pow(NoiseVector2 value, NoiseVector2 power) => new(
+        public static NoiseVector2 Pow(this NoiseVector2 value, NoiseVector2 power) => new(
             Pow(value.X, power.X),
             Pow(value.Y, power.Y));
 
         /// <summary>
         /// Raises each component of a vector to the corresponding component of another vector.
         /// </summary>
-        public static NoiseVector3 Pow(NoiseVector3 value, NoiseVector3 power) => new(
+        public static NoiseVector3 Pow(this NoiseVector3 value, NoiseVector3 power) => new(
             Pow(value.X, power.X),
             Pow(value.Y, power.Y),
             Pow(value.Z, power.Z));
@@ -495,14 +495,14 @@ namespace NoiseDotNet
         /// <summary>
         /// Raises each component of a vector to the same scalar power.
         /// </summary>
-        public static NoiseVector2 Pow(NoiseVector2 value, NoiseScalar power) => new(
+        public static NoiseVector2 Pow(this NoiseVector2 value, NoiseScalar power) => new(
             Pow(value.X, power),
             Pow(value.Y, power));
 
         /// <summary>
         /// Raises each component of a vector to the same scalar power.
         /// </summary>
-        public static NoiseVector3 Pow(NoiseVector3 value, NoiseScalar power) => new(
+        public static NoiseVector3 Pow(this NoiseVector3 value, NoiseScalar power) => new(
             Pow(value.X, power),
             Pow(value.Y, power),
             Pow(value.Z, power));
@@ -510,20 +510,20 @@ namespace NoiseDotNet
         /// <summary>
         /// Clamps a scalar to [0, 1], then applies the smoothstep curve x²(3 - 2x).
         /// </summary>
-        public static NoiseScalar SmoothStep(NoiseScalar value) =>
+        public static NoiseScalar SmoothStep(this NoiseScalar value) =>
             new NoiseNode(NoiseNodeType.SmoothStep01__value__result, value).AsScalar;
 
         /// <summary>
         /// Applies <see cref="SmoothStep(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector2 SmoothStep(NoiseVector2 value) => new(
+        public static NoiseVector2 SmoothStep(this NoiseVector2 value) => new(
             SmoothStep(value.X),
             SmoothStep(value.Y));
 
         /// <summary>
         /// Applies <see cref="SmoothStep(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector3 SmoothStep(NoiseVector3 value) => new(
+        public static NoiseVector3 SmoothStep(this NoiseVector3 value) => new(
             SmoothStep(value.X),
             SmoothStep(value.Y),
             SmoothStep(value.Z));
@@ -568,20 +568,20 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns the largest integer less than or equal to a scalar value.
         /// </summary>
-        public static NoiseScalar Floor(NoiseScalar value) =>
+        public static NoiseScalar Floor(this NoiseScalar value) =>
             new NoiseNode(NoiseNodeType.Floor__value__result, value).AsScalar;
 
         /// <summary>
         /// Applies <see cref="Floor(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector2 Floor(NoiseVector2 value) => new(
+        public static NoiseVector2 Floor(this NoiseVector2 value) => new(
             Floor(value.X),
             Floor(value.Y));
 
         /// <summary>
         /// Applies <see cref="Floor(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector3 Floor(NoiseVector3 value) => new(
+        public static NoiseVector3 Floor(this NoiseVector3 value) => new(
             Floor(value.X),
             Floor(value.Y),
             Floor(value.Z));
@@ -589,19 +589,19 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns the absolute value of a scalar.
         /// </summary>
-        public static NoiseScalar Abs(NoiseScalar value) => Max(value, -value);
+        public static NoiseScalar Abs(this NoiseScalar value) => Max(value, -value);
 
         /// <summary>
         /// Applies <see cref="Abs(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector2 Abs(NoiseVector2 value) => new(
+        public static NoiseVector2 Abs(this NoiseVector2 value) => new(
             Abs(value.X),
             Abs(value.Y));
 
         /// <summary>
         /// Applies <see cref="Abs(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector3 Abs(NoiseVector3 value) => new(
+        public static NoiseVector3 Abs(this NoiseVector3 value) => new(
             Abs(value.X),
             Abs(value.Y),
             Abs(value.Z));
@@ -609,20 +609,20 @@ namespace NoiseDotNet
         /// <summary>
         /// Clamps a scalar between a minimum and maximum value.
         /// </summary>
-        public static NoiseScalar Clamp(NoiseScalar value, NoiseScalar min, NoiseScalar max) =>
+        public static NoiseScalar Clamp(this NoiseScalar value, NoiseScalar min, NoiseScalar max) =>
             Min(Max(value, min), max);
 
         /// <summary>
         /// Clamps each component between the corresponding minimum and maximum components.
         /// </summary>
-        public static NoiseVector2 Clamp(NoiseVector2 value, NoiseVector2 min, NoiseVector2 max) => new(
+        public static NoiseVector2 Clamp(this NoiseVector2 value, NoiseVector2 min, NoiseVector2 max) => new(
             Clamp(value.X, min.X, max.X),
             Clamp(value.Y, min.Y, max.Y));
 
         /// <summary>
         /// Clamps each component between the corresponding minimum and maximum components.
         /// </summary>
-        public static NoiseVector3 Clamp(NoiseVector3 value, NoiseVector3 min, NoiseVector3 max) => new(
+        public static NoiseVector3 Clamp(this NoiseVector3 value, NoiseVector3 min, NoiseVector3 max) => new(
             Clamp(value.X, min.X, max.X),
             Clamp(value.Y, min.Y, max.Y),
             Clamp(value.Z, min.Z, max.Z));
@@ -630,14 +630,14 @@ namespace NoiseDotNet
         /// <summary>
         /// Clamps every vector component between the same scalar minimum and maximum.
         /// </summary>
-        public static NoiseVector2 Clamp(NoiseVector2 value, NoiseScalar min, NoiseScalar max) => new(
+        public static NoiseVector2 Clamp(this NoiseVector2 value, NoiseScalar min, NoiseScalar max) => new(
             Clamp(value.X, min, max),
             Clamp(value.Y, min, max));
 
         /// <summary>
         /// Clamps every vector component between the same scalar minimum and maximum.
         /// </summary>
-        public static NoiseVector3 Clamp(NoiseVector3 value, NoiseScalar min, NoiseScalar max) => new(
+        public static NoiseVector3 Clamp(this NoiseVector3 value, NoiseScalar min, NoiseScalar max) => new(
             Clamp(value.X, min, max),
             Clamp(value.Y, min, max),
             Clamp(value.Z, min, max));
@@ -645,20 +645,20 @@ namespace NoiseDotNet
         /// <summary>
         /// Clamps a scalar to [0, 1].
         /// </summary>
-        public static NoiseScalar Saturate(NoiseScalar value) =>
+        public static NoiseScalar Saturate(this NoiseScalar value) =>
             Clamp(value, Zero, One);
 
         /// <summary>
         /// Applies <see cref="Saturate(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector2 Saturate(NoiseVector2 value) => new(
+        public static NoiseVector2 Saturate(this NoiseVector2 value) => new(
             Saturate(value.X),
             Saturate(value.Y));
 
         /// <summary>
         /// Applies <see cref="Saturate(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector3 Saturate(NoiseVector3 value) => new(
+        public static NoiseVector3 Saturate(this NoiseVector3 value) => new(
             Saturate(value.X),
             Saturate(value.Y),
             Saturate(value.Z));
@@ -666,19 +666,19 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns the fractional part of a scalar in the range [0, 1).
         /// </summary>
-        public static NoiseScalar Fract(NoiseScalar value) => value - Floor(value);
+        public static NoiseScalar Fract(this NoiseScalar value) => value - Floor(value);
 
         /// <summary>
         /// Applies <see cref="Fract(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector2 Fract(NoiseVector2 value) => new(
+        public static NoiseVector2 Fract(this NoiseVector2 value) => new(
             Fract(value.X),
             Fract(value.Y));
 
         /// <summary>
         /// Applies <see cref="Fract(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector3 Fract(NoiseVector3 value) => new(
+        public static NoiseVector3 Fract(this NoiseVector3 value) => new(
             Fract(value.X),
             Fract(value.Y),
             Fract(value.Z));
@@ -686,20 +686,20 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns value - modulus * floor(value / modulus).
         /// </summary>
-        public static NoiseScalar Mod(NoiseScalar value, NoiseScalar modulus) =>
+        public static NoiseScalar Mod(this NoiseScalar value, NoiseScalar modulus) =>
             value - modulus * Floor(value / modulus);
 
         /// <summary>
         /// Applies <see cref="Mod(NoiseScalar, NoiseScalar)"/> component-wise.
         /// </summary>
-        public static NoiseVector2 Mod(NoiseVector2 value, NoiseVector2 modulus) => new(
+        public static NoiseVector2 Mod(this NoiseVector2 value, NoiseVector2 modulus) => new(
             Mod(value.X, modulus.X),
             Mod(value.Y, modulus.Y));
 
         /// <summary>
         /// Applies <see cref="Mod(NoiseScalar, NoiseScalar)"/> component-wise.
         /// </summary>
-        public static NoiseVector3 Mod(NoiseVector3 value, NoiseVector3 modulus) => new(
+        public static NoiseVector3 Mod(this NoiseVector3 value, NoiseVector3 modulus) => new(
             Mod(value.X, modulus.X),
             Mod(value.Y, modulus.Y),
             Mod(value.Z, modulus.Z));
@@ -707,14 +707,14 @@ namespace NoiseDotNet
         /// <summary>
         /// Applies the same scalar modulus to every vector component.
         /// </summary>
-        public static NoiseVector2 Mod(NoiseVector2 value, NoiseScalar modulus) => new(
+        public static NoiseVector2 Mod(this NoiseVector2 value, NoiseScalar modulus) => new(
             Mod(value.X, modulus),
             Mod(value.Y, modulus));
 
         /// <summary>
         /// Applies the same scalar modulus to every vector component.
         /// </summary>
-        public static NoiseVector3 Mod(NoiseVector3 value, NoiseScalar modulus) => new(
+        public static NoiseVector3 Mod(this NoiseVector3 value, NoiseScalar modulus) => new(
             Mod(value.X, modulus),
             Mod(value.Y, modulus),
             Mod(value.Z, modulus));
@@ -722,42 +722,42 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns e raised to a scalar power.
         /// </summary>
-        public static NoiseScalar Exp(NoiseScalar value) => Pow(Constant(MathF.E), value);
+        public static NoiseScalar Exp(this NoiseScalar value) => Pow(Constant(MathF.E), value);
 
         /// <summary>
         /// Applies <see cref="Exp(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector2 Exp(NoiseVector2 value) => new(
+        public static NoiseVector2 Exp(this NoiseVector2 value) => new(
             Exp(value.X),
             Exp(value.Y));
 
         /// <summary>
         /// Applies <see cref="Exp(NoiseScalar)"/> to each component.
         /// </summary>
-        public static NoiseVector3 Exp(NoiseVector3 value) => new(
+        public static NoiseVector3 Exp(this NoiseVector3 value) => new(
             Exp(value.X),
             Exp(value.Y),
             Exp(value.Z));
 
-        public static NoiseScalar Negate(NoiseScalar value) =>
+        public static NoiseScalar Negate(this NoiseScalar value) =>
             new NoiseNode(NoiseNodeType.Negate__value__negated, value).AsScalar;
 
-        public static NoiseVector2 Negate(NoiseVector2 value) => new(
+        public static NoiseVector2 Negate(this NoiseVector2 value) => new(
             Negate(value.X),
             Negate(value.Y));
 
-        public static NoiseVector3 Negate(NoiseVector3 value) => new(
+        public static NoiseVector3 Negate(this NoiseVector3 value) => new(
             Negate(value.X),
             Negate(value.Y),
             Negate(value.Z));
 
-        public static NoiseScalar Subtract(NoiseScalar a, NoiseScalar b) => Add(a, Negate(b));
+        public static NoiseScalar Subtract(this NoiseScalar a, NoiseScalar b) => Add(a, Negate(b));
 
-        public static NoiseVector2 Subtract(NoiseVector2 a, NoiseVector2 b) => Add(a, Negate(b));
+        public static NoiseVector2 Subtract(this NoiseVector2 a, NoiseVector2 b) => Add(a, Negate(b));
 
-        public static NoiseVector3 Subtract(NoiseVector3 a, NoiseVector3 b) => Add(a, Negate(b));
+        public static NoiseVector3 Subtract(this NoiseVector3 a, NoiseVector3 b) => Add(a, Negate(b));
 
-        public static NoiseScalar Multiply(NoiseScalar a, NoiseScalar b)
+        public static NoiseScalar Multiply(this NoiseScalar a, NoiseScalar b)
         {
             if (IsConstant(a, 0f) || IsConstant(b, 0f))
                 return Zero;
@@ -771,46 +771,46 @@ namespace NoiseDotNet
             return result.AsScalar;
         }
 
-        public static NoiseVector2 Multiply(NoiseVector2 a, NoiseVector2 b) => new(
+        public static NoiseVector2 Multiply(this NoiseVector2 a, NoiseVector2 b) => new(
             Multiply(a.X, b.X),
             Multiply(a.Y, b.Y));
 
-        public static NoiseVector3 Multiply(NoiseVector3 a, NoiseVector3 b) => new(
+        public static NoiseVector3 Multiply(this NoiseVector3 a, NoiseVector3 b) => new(
             Multiply(a.X, b.X),
             Multiply(a.Y, b.Y),
             Multiply(a.Z, b.Z));
 
-        public static NoiseVector2 Multiply(NoiseVector2 vector, NoiseScalar scalar) => new(
+        public static NoiseVector2 Multiply(this NoiseVector2 vector, NoiseScalar scalar) => new(
             Multiply(vector.X, scalar),
             Multiply(vector.Y, scalar));
 
-        public static NoiseVector3 Multiply(NoiseVector3 vector, NoiseScalar scalar) => new(
+        public static NoiseVector3 Multiply(this NoiseVector3 vector, NoiseScalar scalar) => new(
             Multiply(vector.X, scalar),
             Multiply(vector.Y, scalar),
             Multiply(vector.Z, scalar));
 
-        public static NoiseScalar Inverse(NoiseScalar value) =>
+        public static NoiseScalar Inverse(this NoiseScalar value) =>
             new NoiseNode(NoiseNodeType.Inverse__value__inverse, value).AsScalar;
 
-        public static NoiseVector2 Inverse(NoiseVector2 value) => new(
+        public static NoiseVector2 Inverse(this NoiseVector2 value) => new(
             Inverse(value.X),
             Inverse(value.Y));
 
-        public static NoiseVector3 Inverse(NoiseVector3 value) => new(
+        public static NoiseVector3 Inverse(this NoiseVector3 value) => new(
             Inverse(value.X),
             Inverse(value.Y),
             Inverse(value.Z));
 
-        public static NoiseScalar Divide(NoiseScalar a, NoiseScalar b) => Multiply(a, Inverse(b));
+        public static NoiseScalar Divide(this NoiseScalar a, NoiseScalar b) => Multiply(a, Inverse(b));
 
-        public static NoiseVector2 Divide(NoiseVector2 a, NoiseVector2 b) => Multiply(a, Inverse(b));
+        public static NoiseVector2 Divide(this NoiseVector2 a, NoiseVector2 b) => Multiply(a, Inverse(b));
 
-        public static NoiseVector3 Divide(NoiseVector3 a, NoiseVector3 b) => Multiply(a, Inverse(b));
+        public static NoiseVector3 Divide(this NoiseVector3 a, NoiseVector3 b) => Multiply(a, Inverse(b));
 
-        public static NoiseVector2 Divide(NoiseVector2 vector, NoiseScalar scalar) =>
+        public static NoiseVector2 Divide(this NoiseVector2 vector, NoiseScalar scalar) =>
             Multiply(vector, Inverse(scalar));
 
-        public static NoiseVector3 Divide(NoiseVector3 vector, NoiseScalar scalar) =>
+        public static NoiseVector3 Divide(this NoiseVector3 vector, NoiseScalar scalar) =>
             Multiply(vector, Inverse(scalar));
     }
 
