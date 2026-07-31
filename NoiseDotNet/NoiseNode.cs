@@ -137,6 +137,15 @@ namespace NoiseDotNet
 
         public NoiseScalar(NoiseNode node, int channelIndex)
         {
+            if ((uint)channelIndex >= (uint)node.OutputChannelCount)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(channelIndex),
+                    channelIndex,
+                    $"NoiseNode of type {node.Type} has {node.OutputChannelCount} output channels. " +
+                    $"Channel index must be between 0 and {node.OutputChannelCount - 1}.");
+            }
+
             Node = node;
             ChannelIndex = channelIndex;
         }
