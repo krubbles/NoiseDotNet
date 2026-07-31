@@ -86,6 +86,54 @@ namespace NoiseDotNet
         public static NoiseVector3 Coordinates(NoiseVector3 frequencyScales) => XYZ * frequencyScales;
 
         /// <summary>
+        /// Creates a two-dimensional Perlin noise function.
+        /// </summary>
+        public static NoiseScalar Perlin(NoiseVector2 coordinates) =>
+            new NoiseNode(
+                NoiseNodeType.Perlin2D_noise__x_y__noise,
+                coordinates.X,
+                coordinates.Y).AsScalar;
+
+        /// <summary>
+        /// Creates a three-dimensional Perlin noise function.
+        /// </summary>
+        public static NoiseScalar Perlin(NoiseVector3 coordinates) =>
+            new NoiseNode(
+                NoiseNodeType.Perlin3D_noise__x_y_z__noise,
+                coordinates.X,
+                coordinates.Y,
+                coordinates.Z).AsScalar;
+
+        /// <summary>
+        /// Creates a two-dimensional cellular noise function.
+        /// Center dist is the distance to the nearest cell center,
+        /// Edge distance is the distance to the nearest cell edge.
+        /// </summary>
+        public static (NoiseScalar centerDist, NoiseScalar edgeDist) Cellular(NoiseVector2 coordinates)
+        {
+            NoiseNode node = new(
+                NoiseNodeType.Cellular2_noise__x_y__center_edge,
+                coordinates.X,
+                coordinates.Y);
+            return (node.Channel(0), node.Channel(1));
+        }
+
+        /// <summary>
+        /// Creates a three-dimensional cellular noise function.
+        /// Center dist is the distance to the nearest cell center,
+        /// Edge distance is the distance to the nearest cell edge.
+        /// </summary>
+        public static (NoiseScalar centerDist, NoiseScalar edgeDist) Cellular(NoiseVector3 coordinates)
+        {
+            NoiseNode node = new(
+                NoiseNodeType.Cellular3_noise__x_y_z__center_edge,
+                coordinates.X,
+                coordinates.Y,
+                coordinates.Z);
+            return (node.Channel(0), node.Channel(1));
+        }
+
+        /// <summary>
         /// Returns a clone of <paramref name="original"/> with every two-dimensional noise
         /// function's coordinates transformed by the basis vectors <paramref name="i"/> and
         /// <paramref name="j"/>.
