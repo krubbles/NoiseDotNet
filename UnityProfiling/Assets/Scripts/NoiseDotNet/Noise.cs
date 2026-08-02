@@ -38,7 +38,7 @@
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using Int = System.Numerics.Vector<int>;
-using Float = System.Numerics.Vector<floatp>;
+using Float = System.Numerics.Vector<float>;
 using Util = System.Numerics.Vector;
 #else
 using Int = System.Int32;

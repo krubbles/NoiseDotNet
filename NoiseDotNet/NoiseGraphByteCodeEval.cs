@@ -1,3 +1,25 @@
+#if UNITY_2017_1_OR_NEWER
+#define UNITY
+#else
+#define CORECLR
+#endif
+
+// As with Noise.cs, this file is written to be compatible with both Unity and CoreCLR.
+// In CoreCLR, vectorization is achieved using the System.Numerics.Vector<T> API.
+// In Unity, vectorization is achieved using Burst auto-vectorization, so the instruction
+// loop below is run inside a Burst job (see BurstNoiseByteCodeJob) and noise instructions
+// call the pointer-based *Burst noise functions, since Burst compiled code cannot schedule
+// or run another Unity Job (which is what the Span-based Noise.* entry points do in Unity).
+
+#if CORECLR
+using System.Numerics;
+using Float = System.Numerics.Vector<float>;
+using Util = System.Numerics.Vector;
+#else
+using Float = System.Single;
+using Util = NoiseDotNet.ScalarUtil;
+#endif
+
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -102,9 +124,7 @@ namespace NoiseDotNet
             }
         }
 
-
-
-        static void EvaluateInstruction(
+        static unsafe void EvaluateInstruction(
             NoiseNodeType type,
             NoiseOpInfo noiseInfo,
             int evaluationSeed,
@@ -118,120 +138,306 @@ namespace NoiseDotNet
             switch (type)
             {
                 case NoiseNodeType.Add__a_b__sum:
-                    {
-                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = a[i] + b[i];
-                        break;
-                    }
+                    EvaluateBinaryOp<AddOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        GetRegister(registerSpace, inputs[1], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Min__a_b__min:
-                    {
-                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = MathF.Min(a[i], b[i]);
-                        break;
-                    }
+                    EvaluateBinaryOp<MinOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        GetRegister(registerSpace, inputs[1], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Max__a_b__max:
-                    {
-                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = MathF.Max(a[i], b[i]);
-                        break;
-                    }
+                    EvaluateBinaryOp<MaxOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        GetRegister(registerSpace, inputs[1], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Pow__value_power__result:
-                    {
-                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> power = GetRegister(registerSpace, inputs[1], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = MathF.Pow(value[i], power[i]);
-                        break;
-                    }
+                    EvaluateBinaryOp<PowOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        GetRegister(registerSpace, inputs[1], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.SmoothStep01__value__result:
-                    {
-                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                        {
-                            float clamped = Math.Clamp(value[i], 0f, 1f);
-                            output0[i] = clamped * clamped * (3f - 2f * clamped);
-                        }
-                        break;
-                    }
+                    EvaluateUnaryOp<SmoothStep01Op>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Lerp__a_b_t__result:
-                    {
-                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
-                        Span<float> t = GetRegister(registerSpace, inputs[2], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = a[i] + (b[i] - a[i]) * t[i];
-                        break;
-                    }
+                    EvaluateTernaryOp<LerpOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        GetRegister(registerSpace, inputs[1], batchSize),
+                        GetRegister(registerSpace, inputs[2], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Floor__value__result:
-                    {
-                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = MathF.Floor(value[i]);
-                        break;
-                    }
+                    EvaluateUnaryOp<FloorOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Negate__value__negated:
-                    {
-                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = -value[i];
-                        break;
-                    }
+                    EvaluateUnaryOp<NegateOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Multiply__a_b__product:
-                    {
-                        Span<float> a = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> b = GetRegister(registerSpace, inputs[1], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = a[i] * b[i];
-                        break;
-                    }
+                    EvaluateBinaryOp<MultiplyOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        GetRegister(registerSpace, inputs[1], batchSize),
+                        output0, batchSize);
+                    break;
                 case NoiseNodeType.Inverse__value__inverse:
+                    EvaluateUnaryOp<InverseOp>(
+                        GetRegister(registerSpace, inputs[0], batchSize),
+                        output0, batchSize);
+                    break;
+
+                // Noise instructions can't share an implementation: in CoreCLR, Noise.GradientNoise2D etc.
+                // are already SIMD-vectorized (see Noise.EvaluateNoiseFunction) and take Spans directly.
+                // In Unity, this method runs inside a Burst job (BurstNoiseByteCodeJob), and Burst compiled
+                // code cannot schedule or run another Unity Job, which is what those Span-based entry points
+                // do in Unity. So the pointer-based *Burst functions are used instead.
+                case NoiseNodeType.Perlin2D_noise__x_y__noise:
                     {
-                        Span<float> value = GetRegister(registerSpace, inputs[0], batchSize);
-                        for (int i = 0; i < batchSize; i++)
-                            output0[i] = 1f / value[i];
+                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
+#if CORECLR
+                        Noise.GradientNoise2D(x, y, output0, CreateNoiseSettings(noiseInfo, evaluationSeed));
+#else
+                        fixed (float* xPtr = x, yPtr = y, outPtr = output0)
+                        {
+                            Noise.GradientNoise2DBurst(xPtr, yPtr, outPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        }
+#endif
                         break;
                     }
-                case NoiseNodeType.Perlin2D_noise__x_y__noise:
-                    Noise.GradientNoise2D(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        output0,
-                        CreateNoiseSettings(noiseInfo, evaluationSeed));
-                    break;
                 case NoiseNodeType.Perlin3D_noise__x_y_z__noise:
-                    Noise.GradientNoise3D(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        GetRegister(registerSpace, inputs[2], batchSize),
-                        output0,
-                        CreateNoiseSettings(noiseInfo, evaluationSeed));
-                    break;
+                    {
+                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
+                        Span<float> z = GetRegister(registerSpace, inputs[2], batchSize);
+#if CORECLR
+                        Noise.GradientNoise3D(x, y, z, output0, CreateNoiseSettings(noiseInfo, evaluationSeed));
+#else
+                        fixed (float* xPtr = x, yPtr = y, zPtr = z, outPtr = output0)
+                        {
+                            Noise.GradientNoise3DBurst(xPtr, yPtr, zPtr, outPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        }
+#endif
+                        break;
+                    }
                 case NoiseNodeType.Cellular2_noise__x_y__center_edge:
-                    Noise.CellularNoise2D(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        output0,
-                        GetRegister(registerSpace, outputs[1], batchSize),
-                        CreateNoiseSettings(noiseInfo, evaluationSeed));
-                    break;
+                    {
+                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
+                        Span<float> edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
+#if CORECLR
+                        Noise.CellularNoise2D(x, y, output0, edgeOutput, CreateNoiseSettings(noiseInfo, evaluationSeed));
+#else
+                        fixed (float* xPtr = x, yPtr = y, centerOutPtr = output0, edgeOutPtr = edgeOutput)
+                        {
+                            Noise.CellularNoise2DBurst(xPtr, yPtr, centerOutPtr, edgeOutPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        }
+#endif
+                        break;
+                    }
                 case NoiseNodeType.Cellular3_noise__x_y_z__center_edge:
-                    Noise.CellularNoise3D(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        GetRegister(registerSpace, inputs[2], batchSize),
-                        output0,
-                        GetRegister(registerSpace, outputs[1], batchSize),
-                        CreateNoiseSettings(noiseInfo, evaluationSeed));
-                    break;
+                    {
+                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
+                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
+                        Span<float> z = GetRegister(registerSpace, inputs[2], batchSize);
+                        Span<float> edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
+#if CORECLR
+                        Noise.CellularNoise3D(x, y, z, output0, edgeOutput, CreateNoiseSettings(noiseInfo, evaluationSeed));
+#else
+                        fixed (float* xPtr = x, yPtr = y, zPtr = z, centerOutPtr = output0, edgeOutPtr = edgeOutput)
+                        {
+                            Noise.CellularNoise3DBurst(xPtr, yPtr, zPtr, centerOutPtr, edgeOutPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        }
+#endif
+                        break;
+                    }
                 default:
                     throw new ArgumentException($"Unsupported executable NoiseNodeType {type}.");
             }
+        }
+
+        interface IUnaryVectorOp
+        {
+            Float Apply(Float a);
+        }
+
+        interface IBinaryVectorOp
+        {
+            Float Apply(Float a, Float b);
+        }
+
+        interface ITernaryVectorOp
+        {
+            Float Apply(Float a, Float b, Float c);
+        }
+
+        readonly struct AddOp : IBinaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a, Float b) => a + b;
+        }
+
+        readonly struct MinOp : IBinaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a, Float b) => Util.Min(a, b);
+        }
+
+        readonly struct MaxOp : IBinaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a, Float b) => Util.Max(a, b);
+        }
+
+        readonly struct MultiplyOp : IBinaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a, Float b) => a * b;
+        }
+
+        readonly struct PowOp : IBinaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a, Float b)
+            {
+#if CORECLR
+                // There is no vectorized MathF.Pow, so each lane is computed individually.
+                Float result = default;
+                for (int lane = 0; lane < Float.Count; lane++)
+                    result = result.WithElement(lane, MathF.Pow(a.GetElement(lane), b.GetElement(lane)));
+                return result;
+#else
+                return MathF.Pow(a, b);
+#endif
+            }
+        }
+
+        readonly struct NegateOp : IUnaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a) => -a;
+        }
+
+        readonly struct InverseOp : IUnaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a) => Util.Create(1f) / a;
+        }
+
+        readonly struct FloorOp : IUnaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a) => Util.Floor(a);
+        }
+
+        readonly struct SmoothStep01Op : IUnaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a)
+            {
+                Float clamped = Util.Min(Util.Max(a, Util.Create(0f)), Util.Create(1f));
+                return clamped * clamped * (Util.Create(3f) - Util.Create(2f) * clamped);
+            }
+        }
+
+        readonly struct LerpOp : ITernaryVectorOp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Float Apply(Float a, Float b, Float t) => a + (b - a) * t;
+        }
+
+        // In CoreCLR, each op processes registers in Float.Count-wide chunks using explicit SIMD,
+        // with a scalar remainder loop for the tail (mirrors Noise.EvaluateNoiseFunction).
+        // In Unity, each op is applied per element in a plain loop, which Burst auto-vectorizes.
+        static void EvaluateUnaryOp<TOp>(Span<float> a, Span<float> output, int batchSize) where TOp : struct, IUnaryVectorOp
+        {
+            TOp op = default;
+#if CORECLR
+            int fullVectorLength = batchSize - batchSize % Float.Count;
+            for (int i = 0; i < fullVectorLength; i += Float.Count)
+                op.Apply(Util.LoadUnsafe(in a[i])).StoreUnsafe(ref output[i]);
+
+            int remainder = batchSize - fullVectorLength;
+            if (remainder > 0)
+            {
+                Float aVec = default;
+                for (int i = 0; i < remainder; i++)
+                    aVec = aVec.WithElement(i, a[fullVectorLength + i]);
+
+                Float result = op.Apply(aVec);
+                for (int i = 0; i < remainder; i++)
+                    output[fullVectorLength + i] = result.GetElement(i);
+            }
+#else
+            for (int i = 0; i < batchSize; i++)
+                output[i] = op.Apply(a[i]);
+#endif
+        }
+
+        static void EvaluateBinaryOp<TOp>(Span<float> a, Span<float> b, Span<float> output, int batchSize) where TOp : struct, IBinaryVectorOp
+        {
+            TOp op = default;
+#if CORECLR
+            int fullVectorLength = batchSize - batchSize % Float.Count;
+            for (int i = 0; i < fullVectorLength; i += Float.Count)
+                op.Apply(Util.LoadUnsafe(in a[i]), Util.LoadUnsafe(in b[i])).StoreUnsafe(ref output[i]);
+
+            int remainder = batchSize - fullVectorLength;
+            if (remainder > 0)
+            {
+                Float aVec = default, bVec = default;
+                for (int i = 0; i < remainder; i++)
+                {
+                    aVec = aVec.WithElement(i, a[fullVectorLength + i]);
+                    bVec = bVec.WithElement(i, b[fullVectorLength + i]);
+                }
+
+                Float result = op.Apply(aVec, bVec);
+                for (int i = 0; i < remainder; i++)
+                    output[fullVectorLength + i] = result.GetElement(i);
+            }
+#else
+            for (int i = 0; i < batchSize; i++)
+                output[i] = op.Apply(a[i], b[i]);
+#endif
+        }
+
+        static void EvaluateTernaryOp<TOp>(Span<float> a, Span<float> b, Span<float> c, Span<float> output, int batchSize) where TOp : struct, ITernaryVectorOp
+        {
+            TOp op = default;
+#if CORECLR
+            int fullVectorLength = batchSize - batchSize % Float.Count;
+            for (int i = 0; i < fullVectorLength; i += Float.Count)
+                op.Apply(Util.LoadUnsafe(in a[i]), Util.LoadUnsafe(in b[i]), Util.LoadUnsafe(in c[i])).StoreUnsafe(ref output[i]);
+
+            int remainder = batchSize - fullVectorLength;
+            if (remainder > 0)
+            {
+                Float aVec = default, bVec = default, cVec = default;
+                for (int i = 0; i < remainder; i++)
+                {
+                    aVec = aVec.WithElement(i, a[fullVectorLength + i]);
+                    bVec = bVec.WithElement(i, b[fullVectorLength + i]);
+                    cVec = cVec.WithElement(i, c[fullVectorLength + i]);
+                }
+
+                Float result = op.Apply(aVec, bVec, cVec);
+                for (int i = 0; i < remainder; i++)
+                    output[fullVectorLength + i] = result.GetElement(i);
+            }
+#else
+            for (int i = 0; i < batchSize; i++)
+                output[i] = op.Apply(a[i], b[i], c[i]);
+#endif
         }
 
         static NoiseSettings CreateNoiseSettings(NoiseOpInfo info, int evaluationSeed) => new(

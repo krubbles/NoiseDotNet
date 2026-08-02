@@ -498,5 +498,19 @@ namespace NoiseDotNet
 #else
         public static float SquareRoot(float f) => MathF.Sqrt(f);
 #endif
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if UNITY
+        public static float Min(float a, float b) => math.min(a, b);
+#else
+        public static float Min(float a, float b) => MathF.Min(a, b);
+#endif
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if UNITY
+        public static float Max(float a, float b) => math.max(a, b);
+#else
+        public static float Max(float a, float b) => MathF.Max(a, b);
+#endif
     }
 }

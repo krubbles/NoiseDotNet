@@ -172,7 +172,11 @@ namespace NoiseDotNet
                 if (inputCount >= 3)
                     zCoords.Slice(offset, count).CopyTo(registers.AsSpan(count * 2, count));
 
+#if UNITY_2017_1_OR_NEWER
+                BurstNoiseByteCodeJob.RunByteCodeJob(compiled.ByteCode, seed, registers, count);
+#else
                 NoiseGraphByteCodeEval.EvaluateByteCode(compiled.ByteCode, seed, registers, count);
+#endif
                 registers.AsSpan(0, count).CopyTo(output1.Slice(offset, count));
                 if (!output2.IsEmpty)
                     registers.AsSpan(count, count).CopyTo(output2.Slice(offset, count));
