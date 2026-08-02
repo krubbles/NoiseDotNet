@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -17,16 +19,16 @@ namespace NoiseDotNet
 
         readonly NoiseScalar[] _outputs;
         readonly Dictionary<NoiseNode, VisitState> _visitStates = new();
-        readonly List<NoiseNode> _discoveryOrder = [];
+        readonly List<NoiseNode> _discoveryOrder = new();
         readonly Dictionary<NoiseNode, NoiseScalar[]> _effectiveInputs = new();
         readonly Dictionary<ValueKey, int> _remainingUses = new();
         readonly Dictionary<ValueKey, int> _registers = new();
         readonly Dictionary<NoiseNode, int> _noiseSeeds = new();
         readonly Dictionary<NoiseNode, int> _pressureCache = new();
-        readonly HashSet<NoiseNode> _compiledNodes = [];
-        readonly SortedSet<int> _freeRegisters = [];
-        readonly List<float> _constants = [];
-        readonly List<byte> _instructions = [];
+        readonly HashSet<NoiseNode> _compiledNodes = new();
+        readonly SortedSet<int> _freeRegisters = new();
+        readonly List<float> _constants = new();
+        readonly List<byte> _instructions = new();
 
         int _inputCount;
         int _nextRegister;
@@ -36,7 +38,8 @@ namespace NoiseDotNet
         NoiseGraphByteCodeCompiler(NoiseScalar[] outputs)
         {
             _outputs = outputs;
-            ArgumentNullException.ThrowIfNull(outputs);
+            if (outputs is null)
+                throw new ArgumentNullException(nameof(outputs));
             if (outputs.Length == 0)
                 throw new ArgumentException("At least one output channel must be provided.", nameof(outputs));
         }
@@ -294,7 +297,7 @@ namespace NoiseDotNet
                 noiseNode,
                 noiseInputs,
                 noiseInputRegisters,
-                [outputRegister],
+                new int[] { outputRegister },
                 accumulate: true);
 
             _registers[new ValueKey(noiseNode, 0)] = outputRegister;
@@ -302,15 +305,15 @@ namespace NoiseDotNet
             _compiledNodes.Add(noiseNode);
             _compiledNodes.Add(node);
 
-            Consume(noiseInputs, [outputRegister]);
-            Consume(addInputs, [outputRegister]);
+            Consume(noiseInputs, new int[] { outputRegister });
+            Consume(addInputs, new int[] { outputRegister });
             return true;
         }
 
         void CompileDependencies(ReadOnlySpan<NoiseScalar> inputs)
         {
-            List<(NoiseNode Node, int InputOrder, int Pressure)> dependencies = [];
-            HashSet<NoiseNode> seen = [];
+            List<(NoiseNode Node, int InputOrder, int Pressure)> dependencies = new();
+            HashSet<NoiseNode> seen = new();
             for (int i = 0; i < inputs.Length; i++)
             {
                 NoiseNode dependency = inputs[i].Node;
@@ -345,7 +348,7 @@ namespace NoiseDotNet
         int[] AllocateOutputs(NoiseNode node, ReadOnlySpan<NoiseScalar> inputs)
         {
             int[] outputs = new int[node.OutputChannelCount];
-            HashSet<int> assigned = [];
+            HashSet<int> assigned = new();
             for (int channel = 0; channel < outputs.Length; channel++)
             {
                 int register = -1;
@@ -474,7 +477,16 @@ namespace NoiseDotNet
                     continue;
 
                 int register = _registers[key];
-                if (!protectedRegisters.Contains(register) && !IsRegisterLive(register))
+                bool isProtected = false;
+                for (int i = 0; i < protectedRegisters.Length; ++i)
+                {
+                    if (protectedRegisters[i] == register)
+                    {
+                        isProtected = true;
+                        break;
+                    }
+                }
+                if (!isProtected && !IsRegisterLive(register))
                     _freeRegisters.Add(register);
             }
         }
@@ -505,7 +517,7 @@ namespace NoiseDotNet
 
         void MaterializeOutputs()
         {
-            List<RegisterMove> pending = [];
+            List<RegisterMove> pending = new();
             for (int outputIndex = 0; outputIndex < _outputs.Length; outputIndex++)
             {
                 NoiseScalar output = _outputs[outputIndex];

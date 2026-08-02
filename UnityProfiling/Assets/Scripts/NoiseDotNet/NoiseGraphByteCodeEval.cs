@@ -9,7 +9,7 @@
 // In Unity, vectorization is achieved using Burst auto-vectorization, so the instruction
 // loop below is run inside a Burst job (see BurstNoiseByteCodeJob) and noise instructions
 // call the pointer-based *Burst noise functions, since Burst compiled code cannot schedule
-// or run another Unity Job (which is what the Span-based Noise.* entry points do in Unity).
+// or run another Unity Job.
 
 #if CORECLR
 using System.Numerics;
@@ -21,42 +21,68 @@ using Util = NoiseDotNet.ScalarUtil;
 #endif
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace NoiseDotNet
 {
     /// <summary>
     /// Compilation and evaluation utilities for NoiseNode bytecode.
     /// </summary>
-    public static partial class NoiseGraphByteCodeEval
+    public static unsafe partial class NoiseGraphByteCodeEval
     {
         public const byte CopyOpCode = byte.MaxValue;
 
+        // The largest input/output register count of any NoiseNodeType (currently Lerp__a_b_t__result
+        // and the two Cellular noise types, respectively). Bump these if a node type needs more.
+        const int MaxInputCount = 3;
+        const int MaxOutputCount = 2;
 
         /// <summary>
         /// Evaluates compiled NoiseNode bytecode over a batch of values.
-        /// The first input registers must already be populated in <paramref name="registerSpace"/>.
-        /// On return, the first output registers contain the result. Each register occupies one
-        /// contiguous <paramref name="batchSize"/>-element section of <paramref name="registerSpace"/>.
+        /// <para>
+        /// Each register occupies one contiguous section of <paramref name="registerBuffer"/> with length <paramref name="batchSize"/>.
+        /// The value for a given register index and sample index is at index (register index * batchSize + sample index) of <paramref name="registerBuffer"/>.
+        /// </para>
+        /// <para>
+        /// The first inputCount registers are inputs. They should be prepopulated in <paramref name="registerBuffer"/> before calling.
+        /// On return, the first outputCount registers contain the result.
+        /// </para>
         /// </summary>
         /// <param name="bytecode">Bytecode produced by <see cref="Compile"/>.</param>
-        /// <param name="seed">Evaluation seed combined with each compiled noise operation's seed.</param>
-        /// <param name="registerSpace">Storage for all input, temporary, constant, and output registers.</param>
-        /// <param name="batchSize">Number of values evaluated in each register.</param>
-        public static void EvaluateByteCode(ReadOnlySpan<byte> bytecode, int seed, Span<float> registerSpace, int batchSize)
+        /// <param name="seed">Evaluation seed.</param>
+        /// <param name="registerBuffer">Register memory storage. size should be registerCount * batchSize.</param>
+        /// <param name="batchSize">Number of evaluations.</param>
+        public static void EvaluateByteCode(ReadOnlySpan<byte> bytecode, int seed, Span<float> registerBuffer, int batchSize)
+        {
+            fixed (byte* bytecodePtr = bytecode)
+            fixed (float* registerSpacePtr = registerBuffer)
+            {
+                EvaluateByteCode(bytecodePtr, bytecode.Length, seed, registerSpacePtr, registerBuffer.Length, batchSize);
+            }
+        }
+
+        /// <summary>
+        /// Evaluates compiled NoiseNode bytecode over a batch of values.
+        /// <para>
+        /// Each register occupies one contiguous section of <paramref name="registerBuffer"/> with length <paramref name="batchSize"/>.
+        /// The value for a given register index and sample index is at index (register index * batchSize + sample index) of <paramref name="registerBuffer"/>.
+        /// </para>
+        /// <para>
+        /// The first inputCount registers are inputs. They should be prepopulated in <paramref name="registerBuffer"/> before calling.
+        /// On return, the first outputCount registers contain the result.
+        /// </para>
+        /// </summary>
+        /// <param name="bytecode">Bytecode produced by <see cref="Compile"/>.</param>
+        /// <param name="seed">Evaluation seed.</param>
+        /// <param name="registerBuffer">Register memory storage. size should be registerCount * batchSize.</param>
+        /// <param name="batchSize">Number of evaluations.</param>
+        public static void EvaluateByteCode(byte* bytecode, int bytecodeLength, int seed, float* registerBuffer, int registerSpaceLength, int batchSize)
         {
             if (batchSize < 0)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(batchSize),
-                    batchSize,
-                    "Batch size cannot be negative.");
-            }
+                throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, "Batch size cannot be negative.");
 
             int offset = 0;
-            ByteCodeInfo info = Read<ByteCodeInfo>(bytecode, ref offset);
+            ByteCodeInfo info = Read<ByteCodeInfo>(bytecode, bytecodeLength, ref offset);
             ValidateByteCodeInfo(info);
 
             long requiredRegisterSpaceLong = (long)info.RegisterCount * batchSize;
@@ -64,37 +90,39 @@ namespace NoiseDotNet
             {
                 throw new ArgumentException(
                     $"The compiled graph requires {info.RegisterCount} registers and the requested batch size is {batchSize}, " +
-                    $"which would require {requiredRegisterSpaceLong} float values. A Span can contain at most {int.MaxValue} values; " +
+                    $"which would require a registerBuffer of length {requiredRegisterSpaceLong}. Maximum register buffer length is {int.MaxValue}; " +
                     "use a smaller batch size or compile a graph that requires fewer registers.",
                     nameof(batchSize));
             }
             int requiredRegisterSpace = (int)requiredRegisterSpaceLong;
 
-            if (registerSpace.Length < requiredRegisterSpace)
+            if (registerSpaceLength < requiredRegisterSpace)
             {
                 throw new ArgumentException(
-                    $"Register space contains {registerSpace.Length} values, but the bytecode requires at least {requiredRegisterSpace}.",
-                    nameof(registerSpace));
+                    $"Register buffer contains {registerSpaceLength} values, but the bytecode requires at least {requiredRegisterSpace}.",
+                    nameof(registerBuffer));
             }
 
             // init constants
             for (int constantIndex = 0; constantIndex < info.ConstantCount; constantIndex++)
             {
-                float value = Read<float>(bytecode, ref offset);
-                GetRegister(registerSpace, info.InputCount + constantIndex, batchSize).Fill(value);
+                float value = Read<float>(bytecode, bytecodeLength, ref offset);
+                Fill(GetRegister(registerBuffer, info.InputCount + constantIndex, batchSize), batchSize, value);
             }
 
-            Span<int> inputScratch = stackalloc int[8];
-            Span<int> outputScratch = stackalloc int[8];
-            while (offset < bytecode.Length)
+            int* inputs = stackalloc int[MaxInputCount];
+            int* outputs = stackalloc int[MaxOutputCount];
+            while (offset < bytecodeLength)
             {
-                byte opCode = Read<byte>(bytecode, ref offset);
+                byte opCode = Read<byte>(bytecode, bytecodeLength, ref offset);
                 if (opCode == CopyOpCode)
                 {
-                    int source = ReadRegisterIndex(bytecode, ref offset, info.RegisterCount);
-                    int destination = ReadRegisterIndex(bytecode, ref offset, info.RegisterCount);
-                    GetRegister(registerSpace, source, batchSize).CopyTo(
-                        GetRegister(registerSpace, destination, batchSize));
+                    int source = ReadRegisterIndex(bytecode, bytecodeLength, ref offset, info.RegisterCount);
+                    int destination = ReadRegisterIndex(bytecode, bytecodeLength, ref offset, info.RegisterCount);
+                    Copy(
+                        GetRegister(registerBuffer, source, batchSize),
+                        GetRegister(registerBuffer, destination, batchSize),
+                        batchSize);
                     continue;
                 }
 
@@ -104,36 +132,36 @@ namespace NoiseDotNet
 
                 NoiseOpInfo noiseInfo = default;
                 if (type.IsNoise())
-                    noiseInfo = Read<NoiseOpInfo>(bytecode, ref offset);
+                    noiseInfo = Read<NoiseOpInfo>(bytecode, bytecodeLength, ref offset);
 
                 int inputCount = type.GetInputCount();
                 int outputCount = type.GetOutputCount();
-                Span<int> inputs = inputCount <= inputScratch.Length
-                    ? inputScratch[..inputCount]
-                    : new int[inputCount];
-                Span<int> outputs = outputCount <= outputScratch.Length
-                    ? outputScratch[..outputCount]
-                    : new int[outputCount];
+                if (inputCount > MaxInputCount || outputCount > MaxOutputCount)
+                {
+                    throw new ArgumentException(
+                        $"NoiseNodeType {type} requires more registers than the bytecode interpreter supports.",
+                        nameof(bytecode));
+                }
 
-                for (int i = 0; i < inputs.Length; i++)
-                    inputs[i] = ReadRegisterIndex(bytecode, ref offset, info.RegisterCount);
-                for (int i = 0; i < outputs.Length; i++)
-                    outputs[i] = ReadRegisterIndex(bytecode, ref offset, info.RegisterCount);
+                for (int i = 0; i < inputCount; i++)
+                    inputs[i] = ReadRegisterIndex(bytecode, bytecodeLength, ref offset, info.RegisterCount);
+                for (int i = 0; i < outputCount; i++)
+                    outputs[i] = ReadRegisterIndex(bytecode, bytecodeLength, ref offset, info.RegisterCount);
 
-                EvaluateInstruction(type, noiseInfo, seed, registerSpace, batchSize, inputs, outputs);
+                EvaluateInstruction(type, noiseInfo, seed, registerBuffer, batchSize, inputs, outputs);
             }
         }
 
-        static unsafe void EvaluateInstruction(
+        static void EvaluateInstruction(
             NoiseNodeType type,
             NoiseOpInfo noiseInfo,
             int evaluationSeed,
-            Span<float> registerSpace,
+            float* registerSpace,
             int batchSize,
-            ReadOnlySpan<int> inputs,
-            ReadOnlySpan<int> outputs)
+            int* inputs,
+            int* outputs)
         {
-            Span<float> output0 = GetRegister(registerSpace, outputs[0], batchSize);
+            float* output0 = GetRegister(registerSpace, outputs[0], batchSize);
 
             switch (type)
             {
@@ -195,68 +223,71 @@ namespace NoiseDotNet
                         output0, batchSize);
                     break;
 
-                // Noise instructions can't share an implementation: in CoreCLR, Noise.GradientNoise2D etc.
-                // are already SIMD-vectorized (see Noise.EvaluateNoiseFunction) and take Spans directly.
-                // In Unity, this method runs inside a Burst job (BurstNoiseByteCodeJob), and Burst compiled
-                // code cannot schedule or run another Unity Job, which is what those Span-based entry points
-                // do in Unity. So the pointer-based *Burst functions are used instead.
                 case NoiseNodeType.Perlin2D_noise__x_y__noise:
                     {
-                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
+                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
+                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
 #if CORECLR
-                        Noise.GradientNoise2D(x, y, output0, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        Noise.GradientNoise2D(
+                            new Span<float>(x, batchSize),
+                            new Span<float>(y, batchSize),
+                            new Span<float>(output0, batchSize),
+                            CreateNoiseSettings(noiseInfo, evaluationSeed));
 #else
-                        fixed (float* xPtr = x, yPtr = y, outPtr = output0)
-                        {
-                            Noise.GradientNoise2DBurst(xPtr, yPtr, outPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
-                        }
+                        Noise.GradientNoise2DBurst(x, y, output0, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
 #endif
                         break;
                     }
                 case NoiseNodeType.Perlin3D_noise__x_y_z__noise:
                     {
-                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
-                        Span<float> z = GetRegister(registerSpace, inputs[2], batchSize);
+                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
+                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
+                        float* z = GetRegister(registerSpace, inputs[2], batchSize);
 #if CORECLR
-                        Noise.GradientNoise3D(x, y, z, output0, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        Noise.GradientNoise3D(
+                            new Span<float>(x, batchSize),
+                            new Span<float>(y, batchSize),
+                            new Span<float>(z, batchSize),
+                            new Span<float>(output0, batchSize),
+                            CreateNoiseSettings(noiseInfo, evaluationSeed));
 #else
-                        fixed (float* xPtr = x, yPtr = y, zPtr = z, outPtr = output0)
-                        {
-                            Noise.GradientNoise3DBurst(xPtr, yPtr, zPtr, outPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
-                        }
+                        Noise.GradientNoise3DBurst(x, y, z, output0, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
 #endif
                         break;
                     }
                 case NoiseNodeType.Cellular2_noise__x_y__center_edge:
                     {
-                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
-                        Span<float> edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
+                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
+                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
+                        float* edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
 #if CORECLR
-                        Noise.CellularNoise2D(x, y, output0, edgeOutput, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        Noise.CellularNoise2D(
+                            new Span<float>(x, batchSize),
+                            new Span<float>(y, batchSize),
+                            new Span<float>(output0, batchSize),
+                            new Span<float>(edgeOutput, batchSize),
+                            CreateNoiseSettings(noiseInfo, evaluationSeed));
 #else
-                        fixed (float* xPtr = x, yPtr = y, centerOutPtr = output0, edgeOutPtr = edgeOutput)
-                        {
-                            Noise.CellularNoise2DBurst(xPtr, yPtr, centerOutPtr, edgeOutPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
-                        }
+                        Noise.CellularNoise2DBurst(x, y, output0, edgeOutput, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
 #endif
                         break;
                     }
                 case NoiseNodeType.Cellular3_noise__x_y_z__center_edge:
                     {
-                        Span<float> x = GetRegister(registerSpace, inputs[0], batchSize);
-                        Span<float> y = GetRegister(registerSpace, inputs[1], batchSize);
-                        Span<float> z = GetRegister(registerSpace, inputs[2], batchSize);
-                        Span<float> edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
+                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
+                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
+                        float* z = GetRegister(registerSpace, inputs[2], batchSize);
+                        float* edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
 #if CORECLR
-                        Noise.CellularNoise3D(x, y, z, output0, edgeOutput, CreateNoiseSettings(noiseInfo, evaluationSeed));
+                        Noise.CellularNoise3D(
+                            new Span<float>(x, batchSize),
+                            new Span<float>(y, batchSize),
+                            new Span<float>(z, batchSize),
+                            new Span<float>(output0, batchSize),
+                            new Span<float>(edgeOutput, batchSize),
+                            CreateNoiseSettings(noiseInfo, evaluationSeed));
 #else
-                        fixed (float* xPtr = x, yPtr = y, zPtr = z, centerOutPtr = output0, edgeOutPtr = edgeOutput)
-                        {
-                            Noise.CellularNoise3DBurst(xPtr, yPtr, zPtr, centerOutPtr, edgeOutPtr, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
-                        }
+                        Noise.CellularNoise3DBurst(x, y, z, output0, edgeOutput, batchSize, CreateNoiseSettings(noiseInfo, evaluationSeed));
 #endif
                         break;
                     }
@@ -316,7 +347,7 @@ namespace NoiseDotNet
                     result = result.WithElement(lane, MathF.Pow(a.GetElement(lane), b.GetElement(lane)));
                 return result;
 #else
-                return MathF.Pow(a, b);
+                return Unity.Mathematics.math.pow(a, b);
 #endif
             }
         }
@@ -358,7 +389,7 @@ namespace NoiseDotNet
         // In CoreCLR, each op processes registers in Float.Count-wide chunks using explicit SIMD,
         // with a scalar remainder loop for the tail (mirrors Noise.EvaluateNoiseFunction).
         // In Unity, each op is applied per element in a plain loop, which Burst auto-vectorizes.
-        static void EvaluateUnaryOp<TOp>(Span<float> a, Span<float> output, int batchSize) where TOp : struct, IUnaryVectorOp
+        static void EvaluateUnaryOp<TOp>(float* a, float* output, int batchSize) where TOp : struct, IUnaryVectorOp
         {
             TOp op = default;
 #if CORECLR
@@ -383,7 +414,7 @@ namespace NoiseDotNet
 #endif
         }
 
-        static void EvaluateBinaryOp<TOp>(Span<float> a, Span<float> b, Span<float> output, int batchSize) where TOp : struct, IBinaryVectorOp
+        static void EvaluateBinaryOp<TOp>(float* a, float* b, float* output, int batchSize) where TOp : struct, IBinaryVectorOp
         {
             TOp op = default;
 #if CORECLR
@@ -411,7 +442,7 @@ namespace NoiseDotNet
 #endif
         }
 
-        static void EvaluateTernaryOp<TOp>(Span<float> a, Span<float> b, Span<float> c, Span<float> output, int batchSize) where TOp : struct, ITernaryVectorOp
+        static void EvaluateTernaryOp<TOp>(float* a, float* b, float* c, float* output, int batchSize) where TOp : struct, ITernaryVectorOp
         {
             TOp op = default;
 #if CORECLR
@@ -449,24 +480,36 @@ namespace NoiseDotNet
             seed: evaluationSeed + info.Seed,
             accumulate: info.Accumulate);
 
-        static Span<float> GetRegister(Span<float> registerSpace, int register, int batchSize) =>
-            registerSpace.Slice(checked(register * batchSize), batchSize);
+        static float* GetRegister(float* registerSpace, int register, int batchSize) =>
+            registerSpace + checked(register * batchSize);
 
-        static int ReadRegisterIndex(ReadOnlySpan<byte> bytecode, ref int offset, int registerCount)
+        static void Fill(float* register, int batchSize, float value)
         {
-            int register = Read<int>(bytecode, ref offset);
+            for (int i = 0; i < batchSize; i++)
+                register[i] = value;
+        }
+
+        static void Copy(float* source, float* destination, int batchSize)
+        {
+            for (int i = 0; i < batchSize; i++)
+                destination[i] = source[i];
+        }
+
+        static int ReadRegisterIndex(byte* bytecode, int bytecodeLength, ref int offset, int registerCount)
+        {
+            int register = Read<int>(bytecode, bytecodeLength, ref offset);
             if ((uint)register >= (uint)registerCount)
                 throw new ArgumentException($"Bytecode references invalid register {register}.", nameof(bytecode));
             return register;
         }
 
-        static T Read<T>(ReadOnlySpan<byte> bytecode, ref int offset) where T : unmanaged
+        static T Read<T>(byte* bytecode, int bytecodeLength, ref int offset) where T : unmanaged
         {
             int size = Unsafe.SizeOf<T>();
-            if (offset < 0 || bytecode.Length - offset < size)
+            if (offset < 0 || bytecodeLength - offset < size)
                 throw new ArgumentException("Bytecode ended in the middle of an instruction.", nameof(bytecode));
 
-            T value = MemoryMarshal.Read<T>(bytecode.Slice(offset, size));
+            T value = Unsafe.ReadUnaligned<T>(bytecode + offset);
             offset += size;
             return value;
         }
@@ -481,22 +524,17 @@ namespace NoiseDotNet
                 throw new ArgumentException("Bytecode contains an invalid header.");
             }
 
-            int fixedRegisterCount;
-            try
-            {
-                fixedRegisterCount = checked(info.InputCount + info.ConstantCount);
-            }
-            catch (OverflowException exception)
-            {
-                throw new ArgumentException("Bytecode contains an invalid header.", exception);
-            }
+            long fixedRegisterCountLong = (long)info.InputCount + info.ConstantCount;
+            if (fixedRegisterCountLong > int.MaxValue)
+                throw new ArgumentException("Bytecode contains an invalid header.");
+            int fixedRegisterCount = (int)fixedRegisterCountLong;
 
             if (info.RegisterCount < Math.Max(fixedRegisterCount, info.OutputCount))
                 throw new ArgumentException("Bytecode contains an invalid header.");
         }
 
         internal static bool IsExecutable(NoiseNodeType type) =>
-            type != NoiseNodeType.Null && Enum.IsDefined(typeof(NoiseNodeType), type);
+            type != NoiseNodeType.Null && NoiseNodeTypeExtensions.IsDefined(type);
 
     }
 }

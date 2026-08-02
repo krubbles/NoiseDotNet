@@ -1,3 +1,5 @@
+using System;
+
 namespace NoiseDotNet
 {
     /// <summary>
@@ -45,7 +47,7 @@ namespace NoiseDotNet
         public NoiseNode(NoiseNodeType type, params float[] constantValues)
         {
             Type = type;
-            _inputs = [];
+            _inputs = Array.Empty<NoiseScalar>();
             _constantValues = constantValues ?? Array.Empty<float>();
 
             // all errors below should indicate an internal error (none should happen if code is working correctly) and include the NoiseNodeType
@@ -232,7 +234,7 @@ namespace NoiseDotNet
     /// </summary>
     public static class NoiseNodeTypeExtensions
     {
-        readonly struct NoiseNodeTypeMetadata
+        internal readonly struct NoiseNodeTypeMetadata : IEquatable<NoiseNodeTypeMetadata>
         {
             public readonly int InputCount;
             public readonly int OutputCount;
@@ -244,9 +246,13 @@ namespace NoiseDotNet
                 OutputCount = outputCount;
                 IsNoise = isNoise;
             }
-        }
 
-        static readonly NoiseNodeTypeMetadata[] _metadata = CreateMetadataCache();
+            public bool Equals(NoiseNodeTypeMetadata other) =>
+                InputCount == other.InputCount && OutputCount == other.OutputCount && IsNoise == other.IsNoise;
+            public override bool Equals(object? obj) => obj is NoiseNodeTypeMetadata other && Equals(other);
+            public override int GetHashCode() => HashCode.Combine(InputCount, OutputCount, IsNoise);
+            public override string ToString() => $"(InputCount: {InputCount}, OutputCount: {OutputCount}, IsNoise: {IsNoise})";
+        }
 
         /// <summary>
         /// Returns the number of input channels for the given node type.
@@ -263,37 +269,68 @@ namespace NoiseDotNet
         /// </summary>
         public static bool IsNoise(this NoiseNodeType type) => GetMetadata(type).IsNoise;
 
-        static ref NoiseNodeTypeMetadata GetMetadata(NoiseNodeType type)
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a named member of <see cref="NoiseNodeType"/>.
+        /// </summary>
+        internal static bool IsDefined(NoiseNodeType type) => TryGetMetadata(type, out _);
+
+        static NoiseNodeTypeMetadata GetMetadata(NoiseNodeType type)
         {
-            int index = (int)type;
-            if ((uint)index >= (uint)_metadata.Length)
+            if (!TryGetMetadata(type, out NoiseNodeTypeMetadata metadata))
                 throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown NoiseNodeType value.");
-            return ref _metadata[index];
+            return metadata;
         }
 
-        static NoiseNodeTypeMetadata[] CreateMetadataCache()
+        // This is a switch rather than a lookup table computed at startup because it needs to be
+        // callable from Burst compiled code, which cannot read managed caches (arrays, dictionaries,
+        // etc.) built at runtime. NoiseNodeTypeMetadataTests keeps this in sync with the
+        // NoiseNodeType naming convention by cross-checking every case here against metadata parsed
+        // from each enum member's name via ParseMetadataFromName.
+        internal static bool TryGetMetadata(NoiseNodeType type, out NoiseNodeTypeMetadata metadata)
         {
-            NoiseNodeType[] values = Enum.GetValues<NoiseNodeType>();
-            int maxValue = 0;
-            foreach (NoiseNodeType value in values)
-                maxValue = Math.Max(maxValue, (int)value);
-
-            NoiseNodeTypeMetadata[] metadata = new NoiseNodeTypeMetadata[maxValue + 1];
-            foreach (NoiseNodeType value in values)
+            switch (type)
             {
-                if (value == NoiseNodeType.Null)
-                    continue;
-
-                string[] nameParts = value.ToString().Split("__");
-                if (nameParts.Length != 3)
-                    throw new InvalidOperationException($"NoiseNodeType {value} does not follow the required naming convention.");
-
-                metadata[(int)value] = new NoiseNodeTypeMetadata(
-                    CountChannels(nameParts[1]),
-                    CountChannels(nameParts[2]),
-                    nameParts[0].EndsWith("_noise", StringComparison.Ordinal));
+                case NoiseNodeType.Coords1__NoIn__x: metadata = new(0, 1, false); return true;
+                case NoiseNodeType.Coords2__NoIn__x_y: metadata = new(0, 2, false); return true;
+                case NoiseNodeType.Coords3__NoIn__x_y_z: metadata = new(0, 3, false); return true;
+                case NoiseNodeType.Constant1__NoIn__x: metadata = new(0, 1, false); return true;
+                case NoiseNodeType.Constant2__NoIn__x_y: metadata = new(0, 2, false); return true;
+                case NoiseNodeType.Constant3__NoIn__x_y_z: metadata = new(0, 3, false); return true;
+                case NoiseNodeType.Perlin2D_noise__x_y__noise: metadata = new(2, 1, true); return true;
+                case NoiseNodeType.Perlin3D_noise__x_y_z__noise: metadata = new(3, 1, true); return true;
+                case NoiseNodeType.Cellular2_noise__x_y__center_edge: metadata = new(2, 2, true); return true;
+                case NoiseNodeType.Cellular3_noise__x_y_z__center_edge: metadata = new(3, 2, true); return true;
+                case NoiseNodeType.Add__a_b__sum: metadata = new(2, 1, false); return true;
+                case NoiseNodeType.Negate__value__negated: metadata = new(1, 1, false); return true;
+                case NoiseNodeType.Multiply__a_b__product: metadata = new(2, 1, false); return true;
+                case NoiseNodeType.Inverse__value__inverse: metadata = new(1, 1, false); return true;
+                case NoiseNodeType.Min__a_b__min: metadata = new(2, 1, false); return true;
+                case NoiseNodeType.Max__a_b__max: metadata = new(2, 1, false); return true;
+                case NoiseNodeType.Pow__value_power__result: metadata = new(2, 1, false); return true;
+                case NoiseNodeType.SmoothStep01__value__result: metadata = new(1, 1, false); return true;
+                case NoiseNodeType.Lerp__a_b_t__result: metadata = new(3, 1, false); return true;
+                case NoiseNodeType.Floor__value__result: metadata = new(1, 1, false); return true;
+                default: metadata = default; return false;
             }
-            return metadata;
+        }
+
+        /// <summary>
+        /// Parses input/output channel counts and noise-ness from a <see cref="NoiseNodeType"/>
+        /// member's name, following the "Operation__Inputs__Outputs" naming convention documented on
+        /// <see cref="NoiseNodeType"/>. Used only by tests to verify <see cref="TryGetMetadata"/> (the
+        /// switch actually used at runtime) stays in sync with the enum; not used at runtime itself
+        /// since it relies on reflection (<see cref="Enum.ToString()"/>), which isn't Burst compatible.
+        /// </summary>
+        internal static NoiseNodeTypeMetadata ParseMetadataFromName(NoiseNodeType value)
+        {
+            string[] nameParts = value.ToString().Split("__");
+            if (nameParts.Length != 3)
+                throw new InvalidOperationException($"NoiseNodeType {value} does not follow the required naming convention.");
+
+            return new NoiseNodeTypeMetadata(
+                CountChannels(nameParts[1]),
+                CountChannels(nameParts[2]),
+                nameParts[0].EndsWith("_noise", StringComparison.Ordinal));
         }
 
         static int CountChannels(string channels)

@@ -1,8 +1,7 @@
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System;
 using System.Collections.Generic;
-using NUnit.Framework;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace NoiseDotNet
 {

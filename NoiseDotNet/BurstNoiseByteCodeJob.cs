@@ -28,11 +28,7 @@ namespace NoiseDotNet
 
         public void Execute()
         {
-            NoiseGraphByteCodeEval.EvaluateByteCode(
-                new ReadOnlySpan<byte>(byteCode, byteCodeLength),
-                seed,
-                new Span<float>(registerSpace, registerSpaceLength),
-                batchSize);
+            NoiseGraphByteCodeEval.EvaluateByteCode(byteCode, byteCodeLength, seed, registerSpace, registerSpaceLength, batchSize);
         }
 
         /// <summary>

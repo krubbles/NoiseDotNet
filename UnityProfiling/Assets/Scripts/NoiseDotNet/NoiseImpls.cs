@@ -27,6 +27,7 @@ using Util = NoiseDotNet.ScalarUtil;
 using Unity.Mathematics;
 #endif
 
+using System;
 using System.Runtime.CompilerServices;
 
 namespace NoiseDotNet
