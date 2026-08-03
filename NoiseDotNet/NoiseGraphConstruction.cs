@@ -279,6 +279,35 @@ namespace NoiseDotNet
         public static NoiseVector3 Stretch(this NoiseVector3 original, NoiseVector3 scale) =>
             Stretch(original, scale.X, scale.Y, scale.Z);
 
+        /// <summary>
+        /// Creates a fractal noise function from a single reference octave.
+        /// <para>
+        /// Returns the sum of <paramref name="octaveCount"/> octaves. Each octave is a clone of <paramref name="value"/> with
+        /// amplitude scaled by pow(<paramref name="persistence"/>, octave index),
+        /// and frequency scaled by pow(<paramref name="lacunarity"/>, octave index).
+        /// The reference octave, <paramref name="value"/>, is octave index zero and is thus unchanged.
+        /// </para>
+        /// <para>
+        /// In general, <paramref name="persistence"/> should be between 0 and 1, and <paramref name="lacunarity"/> should be exactly 2.
+        /// </para>
+        /// </summary>
+        public static NoiseScalar Fractal(this NoiseScalar value, NoiseScalar persistence, NoiseScalar lacunarity, int octaveCount)
+        {
+            if (octaveCount < 1)
+                throw new ArgumentOutOfRangeException(nameof(octaveCount), octaveCount, "Octave count must be at least 1.");
+
+            NoiseScalar sum = value;
+            NoiseScalar frequency = lacunarity;
+            NoiseScalar amplitude = persistence;
+            for (int octave = 1; octave < octaveCount; octave++)
+            {
+                sum += value.Stretch(frequency, frequency) * amplitude;
+                frequency *= lacunarity;
+                amplitude *= persistence;
+            }
+            return sum;
+        }
+
         static NoiseScalar[] Transform(NoiseScalar[] originals, NoiseScalar[][] basis)
         {
             Dictionary<NoiseNode, NoiseNode> clones = new();

@@ -279,6 +279,33 @@ namespace NoiseDotNet
         public static NoiseVector3 Stretch(this NoiseVector3 original, NoiseVector3 scale) =>
             Stretch(original, scale.X, scale.Y, scale.Z);
 
+        /// <summary>
+        /// Combines frequency-scaled, amplitude-weighted copies of a two-dimensional noise
+        /// expression into a single fractal Brownian motion NoiseScalar.
+        /// <para>
+        /// The first octave is <paramref name="value"/> unchanged. Each subsequent octave stretches
+        /// <paramref name="value"/>'s coordinate inputs by <paramref name="lacunarity"/> raised to the
+        /// octave index, and scales its contribution by <paramref name="persistence"/> raised to the
+        /// octave index, before adding it to the sum.
+        /// </para>
+        /// </summary>
+        public static NoiseScalar Fractal(this NoiseScalar value, NoiseScalar persistence, NoiseScalar lacunarity, int octaves)
+        {
+            if (octaves < 1)
+                throw new ArgumentOutOfRangeException(nameof(octaves), octaves, "Octave count must be at least 1.");
+
+            NoiseScalar sum = value;
+            NoiseScalar frequency = lacunarity;
+            NoiseScalar amplitude = persistence;
+            for (int octave = 1; octave < octaves; octave++)
+            {
+                sum += value.Stretch(frequency, frequency) * amplitude;
+                frequency *= lacunarity;
+                amplitude *= persistence;
+            }
+            return sum;
+        }
+
         static NoiseScalar[] Transform(NoiseScalar[] originals, NoiseScalar[][] basis)
         {
             Dictionary<NoiseNode, NoiseNode> clones = new();
