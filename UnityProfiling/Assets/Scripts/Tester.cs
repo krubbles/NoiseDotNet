@@ -7,10 +7,12 @@ public class Tester : MonoBehaviour
     const float LowestOctaveUnitsPerPixel = 0.03f;
 
     [SerializeField] Texture2D atlasTexture;
+    [SerializeField] Texture2D graphAtlasTexture;
     [SerializeField] int seed = 12345;
     [SerializeField] int octaves = 1;
     [SerializeField] float persistence = 0.5f;
     [SerializeField] float lacunarity = 2.0f;
+    [SerializeField] float domainWarpStrength = 1f;
 
     float[] xCoords2D;
     float[] yCoords2D;
@@ -23,10 +25,12 @@ public class Tester : MonoBehaviour
     float[] outputB;
 
     public Texture2D AtlasTexture => atlasTexture;
+    public Texture2D GraphAtlasTexture => graphAtlasTexture;
 
     void Start()
     {
         GenerateAtlas();
+        GenerateGraphAtlas();
     }
 
     [ContextMenu("Generate Atlas")]
@@ -69,6 +73,86 @@ public class Tester : MonoBehaviour
         tiles[5] = CreateTextureFromSamples(outputB);
 
         atlasTexture = BuildAtlas(tiles, 3, 2);
+    }
+
+    /// <summary>
+    /// Builds a few NoiseGraphs (evaluated through the compiled bytecode interpreter, i.e. through
+    /// a Burst job in the editor) and renders each to a tile, so the graph API's output can be
+    /// visually compared against the direct Noise API output in <see cref="AtlasTexture"/>.
+    /// </summary>
+    [ContextMenu("Generate Graph Atlas")]
+    public void GenerateGraphAtlas()
+    {
+        EnsureBuffers();
+        Build2DCoordinates();
+        BuildRotated3DCoordinates();
+
+        float freq = LowestOctaveUnitsPerPixel;
+
+        Texture2D[] tiles = new Texture2D[6];
+
+        // Plain 2D and 3D Perlin noise, for a direct visual comparison against the top-left two
+        // tiles of AtlasTexture (which evaluate the same noise through the non-graph Noise API).
+        var perlin2D = NoiseDotNet.NoiseGraph.Perlin(NoiseDotNet.NoiseGraph.Coordinates(NoiseDotNet.NoiseGraph.Constant(freq, freq)));
+        ClearOutputBuffers();
+        NoiseDotNet.NoiseGraph.Evaluate2D(perlin2D, xCoords2D, yCoords2D, outputA, seed);
+        tiles[0] = CreateTextureFromSamples(outputA);
+
+        var perlin3D = NoiseDotNet.NoiseGraph.Perlin(NoiseDotNet.NoiseGraph.Coordinates(NoiseDotNet.NoiseGraph.Constant(freq, freq, freq)));
+        ClearOutputBuffers();
+        NoiseDotNet.NoiseGraph.Evaluate3D(perlin3D, xCoords3D, yCoords3D, zCoords3D, outputA, seed);
+        tiles[1] = CreateTextureFromSamples(outputA);
+
+        // 2D cellular noise, both outputs from one compiled graph.
+        (var center2D, var edge2D) = NoiseDotNet.NoiseGraph.Cellular(NoiseDotNet.NoiseGraph.Coordinates(NoiseDotNet.NoiseGraph.Constant(freq, freq)));
+        ClearOutputBuffers();
+        NoiseDotNet.NoiseGraph.Evaluate2D(center2D, edge2D, xCoords2D, yCoords2D, outputA, outputB, seed);
+        tiles[2] = CreateTextureFromSamples(outputA);
+        tiles[3] = CreateTextureFromSamples(outputB);
+
+        // Two-octave sum built from graph nodes (Perlin, Multiply, Add), exercising the arithmetic
+        // bytecode ops rather than just a single noise instruction.
+        var octave1 = perlin2D * NoiseDotNet.NoiseGraph.Constant(0.6f);
+        var octave2 = NoiseDotNet.NoiseGraph.Perlin(NoiseDotNet.NoiseGraph.Coordinates(NoiseDotNet.NoiseGraph.Constant(freq * 2f, freq * 2f))) * NoiseDotNet.NoiseGraph.Constant(0.4f);
+        var twoOctaveSum = octave1 + octave2;
+        ClearOutputBuffers();
+        NoiseDotNet.NoiseGraph.Evaluate2D(twoOctaveSum, xCoords2D, yCoords2D, outputA, seed);
+        tiles[4] = CreateTextureFromSamples(outputA);
+
+        // An fbm field domain warped by another (decorrelated) fbm field: sample position is offset
+        // by a vector built from two fbm evaluations before being fed into a third fbm evaluation.
+        // Exercises deeper graphs (each fbm is `octaves` chained Perlin + Add + Multiply nodes) and
+        // reusing a NoiseVector2 expression, rather than the raw coordinate inputs, as a noise position.
+        var position = NoiseDotNet.NoiseGraph.XY;
+        var warpX = Fbm(position, freq);
+        var warpY = Fbm(position + NoiseDotNet.NoiseGraph.Constant(5.2f, 1.3f), freq);
+        var warpOffset = new NoiseDotNet.NoiseVector2(warpX, warpY) * NoiseDotNet.NoiseGraph.Constant(domainWarpStrength / freq);
+        var domainWarped = Fbm(position + warpOffset, freq);
+        ClearOutputBuffers();
+        NoiseDotNet.NoiseGraph.Evaluate2D(domainWarped, xCoords2D, yCoords2D, outputA, seed);
+        tiles[5] = CreateTextureFromSamples(outputA);
+
+        graphAtlasTexture = BuildAtlas(tiles, 3, 2);
+    }
+
+    /// <summary>
+    /// Builds a fractal Brownian motion NoiseScalar graph: a sum of Perlin octaves at
+    /// <paramref name="baseFrequency"/> scaled by <see cref="lacunarity"/> each octave, with
+    /// amplitude scaled by <see cref="persistence"/> each octave, using <see cref="octaves"/> octaves.
+    /// </summary>
+    NoiseDotNet.NoiseScalar Fbm(NoiseDotNet.NoiseVector2 position, float baseFrequency)
+    {
+        var sum = NoiseDotNet.NoiseGraph.Zero;
+        float frequency = baseFrequency;
+        float amplitude = 1f;
+        for (int octave = 0; octave < octaves; octave++)
+        {
+            var noise = NoiseDotNet.NoiseGraph.Perlin(position * NoiseDotNet.NoiseGraph.Constant(frequency, frequency));
+            sum += noise * NoiseDotNet.NoiseGraph.Constant(amplitude);
+            frequency *= lacunarity;
+            amplitude *= persistence;
+        }
+        return sum;
     }
 
     void EnsureBuffers()
