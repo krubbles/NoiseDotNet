@@ -126,7 +126,7 @@ namespace NoiseDotNet
                 }
 
                 NoiseNodeType type = (NoiseNodeType)opCode;
-                if (!IsExecutable(type))
+                if (!type.IsExecutable())
                     throw new ArgumentException($"Bytecode contains unsupported opcode {opCode}.", nameof(bytecode));
 
                 NoiseOpInfo noiseInfo = default;
@@ -155,77 +155,51 @@ namespace NoiseDotNet
             NoiseNodeType type,
             NoiseOpInfo noiseInfo,
             int evaluationSeed,
-            float* registerSpace,
+            float* registerBuffer,
             int batchSize,
             int* inputs,
             int* outputs)
         {
-            float* output0 = GetRegister(registerSpace, outputs[0], batchSize);
+            float* GetRegister(int register) => GetRegister(registerBuffer, register, batchSize);
+            float* output0 = GetRegister(outputs[0]);
 
             switch (type)
             {
                 case NoiseNodeType.Add__a_b__sum:
-                    EvaluateBinaryOp<AddOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        output0, batchSize);
+                    EvaluateBinaryOp<AddOp>(GetRegister(inputs[0]), GetRegister(inputs[1]), output0, batchSize);
                     break;
                 case NoiseNodeType.Min__a_b__min:
-                    EvaluateBinaryOp<MinOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        output0, batchSize);
+                    EvaluateBinaryOp<MinOp>(GetRegister(inputs[0]), GetRegister(inputs[1]), output0, batchSize);
                     break;
                 case NoiseNodeType.Max__a_b__max:
-                    EvaluateBinaryOp<MaxOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        output0, batchSize);
+                    EvaluateBinaryOp<MaxOp>(GetRegister(inputs[0]), GetRegister(inputs[1]), output0, batchSize);
                     break;
                 case NoiseNodeType.Pow__value_power__result:
-                    EvaluateBinaryOp<PowOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        output0, batchSize);
+                    EvaluateBinaryOp<PowOp>(GetRegister(inputs[0]), GetRegister(inputs[1]), output0, batchSize);
                     break;
                 case NoiseNodeType.SmoothStep01__value__result:
-                    EvaluateUnaryOp<SmoothStep01Op>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        output0, batchSize);
+                    EvaluateUnaryOp<SmoothStep01Op>(GetRegister(inputs[0]), output0, batchSize);
                     break;
                 case NoiseNodeType.Lerp__a_b_t__result:
-                    EvaluateTernaryOp<LerpOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        GetRegister(registerSpace, inputs[2], batchSize),
-                        output0, batchSize);
+                    EvaluateTernaryOp<LerpOp>(GetRegister(inputs[0]), GetRegister(inputs[1]), GetRegister(inputs[2]), output0, batchSize);
                     break;
                 case NoiseNodeType.Floor__value__result:
-                    EvaluateUnaryOp<FloorOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        output0, batchSize);
+                    EvaluateUnaryOp<FloorOp>(GetRegister(inputs[0]), output0, batchSize);
                     break;
                 case NoiseNodeType.Negate__value__negated:
-                    EvaluateUnaryOp<NegateOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        output0, batchSize);
+                    EvaluateUnaryOp<NegateOp>(GetRegister(inputs[0]), output0, batchSize);
                     break;
                 case NoiseNodeType.Multiply__a_b__product:
-                    EvaluateBinaryOp<MultiplyOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        GetRegister(registerSpace, inputs[1], batchSize),
-                        output0, batchSize);
+                    EvaluateBinaryOp<MultiplyOp>(GetRegister(inputs[0]), GetRegister(inputs[1]), output0, batchSize);
                     break;
                 case NoiseNodeType.Inverse__value__inverse:
-                    EvaluateUnaryOp<InverseOp>(
-                        GetRegister(registerSpace, inputs[0], batchSize),
-                        output0, batchSize);
+                    EvaluateUnaryOp<InverseOp>(GetRegister(inputs[0]), output0, batchSize);
                     break;
 
                 case NoiseNodeType.Perlin2D_noise__x_y__noise:
                     {
-                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
-                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
+                        float* x = GetRegister(inputs[0]);
+                        float* y = GetRegister(inputs[1]);
 #if CORECLR
                         Noise.GradientNoise2D(
                             new Span<float>(x, batchSize),
@@ -239,9 +213,9 @@ namespace NoiseDotNet
                     }
                 case NoiseNodeType.Perlin3D_noise__x_y_z__noise:
                     {
-                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
-                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
-                        float* z = GetRegister(registerSpace, inputs[2], batchSize);
+                        float* x = GetRegister(inputs[0]);
+                        float* y = GetRegister(inputs[1]);
+                        float* z = GetRegister(inputs[2]);
 #if CORECLR
                         Noise.GradientNoise3D(
                             new Span<float>(x, batchSize),
@@ -256,9 +230,9 @@ namespace NoiseDotNet
                     }
                 case NoiseNodeType.Cellular2_noise__x_y__center_edge:
                     {
-                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
-                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
-                        float* edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
+                        float* x = GetRegister(inputs[0]);
+                        float* y = GetRegister(inputs[1]);
+                        float* edgeOutput = GetRegister(outputs[1]);
 #if CORECLR
                         Noise.CellularNoise2D(
                             new Span<float>(x, batchSize),
@@ -273,10 +247,10 @@ namespace NoiseDotNet
                     }
                 case NoiseNodeType.Cellular3_noise__x_y_z__center_edge:
                     {
-                        float* x = GetRegister(registerSpace, inputs[0], batchSize);
-                        float* y = GetRegister(registerSpace, inputs[1], batchSize);
-                        float* z = GetRegister(registerSpace, inputs[2], batchSize);
-                        float* edgeOutput = GetRegister(registerSpace, outputs[1], batchSize);
+                        float* x = GetRegister(inputs[0]);
+                        float* y = GetRegister(inputs[1]);
+                        float* z = GetRegister(inputs[2]);
+                        float* edgeOutput = GetRegister(outputs[1]);
 #if CORECLR
                         Noise.CellularNoise3D(
                             new Span<float>(x, batchSize),
@@ -531,9 +505,5 @@ namespace NoiseDotNet
             if (info.RegisterCount < Math.Max(fixedRegisterCount, info.OutputCount))
                 throw new ArgumentException("Bytecode contains an invalid header.");
         }
-
-        internal static bool IsExecutable(NoiseNodeType type) =>
-            type != NoiseNodeType.Null && NoiseNodeTypeExtensions.IsDefined(type);
-
     }
 }

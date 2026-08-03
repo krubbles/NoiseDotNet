@@ -234,26 +234,6 @@ namespace NoiseDotNet
     /// </summary>
     public static class NoiseNodeTypeExtensions
     {
-        internal readonly struct NoiseNodeTypeMetadata : IEquatable<NoiseNodeTypeMetadata>
-        {
-            public readonly int InputCount;
-            public readonly int OutputCount;
-            public readonly bool IsNoise;
-
-            public NoiseNodeTypeMetadata(int inputCount, int outputCount, bool isNoise)
-            {
-                InputCount = inputCount;
-                OutputCount = outputCount;
-                IsNoise = isNoise;
-            }
-
-            public bool Equals(NoiseNodeTypeMetadata other) =>
-                InputCount == other.InputCount && OutputCount == other.OutputCount && IsNoise == other.IsNoise;
-            public override bool Equals(object? obj) => obj is NoiseNodeTypeMetadata other && Equals(other);
-            public override int GetHashCode() => HashCode.Combine(InputCount, OutputCount, IsNoise);
-            public override string ToString() => $"(InputCount: {InputCount}, OutputCount: {OutputCount}, IsNoise: {IsNoise})";
-        }
-
         /// <summary>
         /// Returns the number of input channels for the given node type.
         /// </summary>
@@ -272,7 +252,23 @@ namespace NoiseDotNet
         /// <summary>
         /// Returns whether <paramref name="type"/> is a named member of <see cref="NoiseNodeType"/>.
         /// </summary>
-        internal static bool IsDefined(NoiseNodeType type) => TryGetMetadata(type, out _);
+        internal static bool IsExecutable(NoiseNodeType type) => TryGetMetadata(type, out _);
+
+        internal readonly struct NoiseNodeTypeMetadata
+        {
+            public readonly int InputCount;
+            public readonly int OutputCount;
+            public readonly bool IsNoise;
+
+            public NoiseNodeTypeMetadata(int inputCount, int outputCount, bool isNoise)
+            {
+                InputCount = inputCount;
+                OutputCount = outputCount;
+                IsNoise = isNoise;
+            }
+
+            public override string ToString() => $"(InputCount: {InputCount}, OutputCount: {OutputCount}, IsNoise: {IsNoise})";
+        }
 
         static NoiseNodeTypeMetadata GetMetadata(NoiseNodeType type)
         {
@@ -288,30 +284,33 @@ namespace NoiseDotNet
         // from each enum member's name via ParseMetadataFromName.
         internal static bool TryGetMetadata(NoiseNodeType type, out NoiseNodeTypeMetadata metadata)
         {
-            switch (type)
+            metadata = type switch
             {
-                case NoiseNodeType.Coords1__NoIn__x: metadata = new(0, 1, false); return true;
-                case NoiseNodeType.Coords2__NoIn__x_y: metadata = new(0, 2, false); return true;
-                case NoiseNodeType.Coords3__NoIn__x_y_z: metadata = new(0, 3, false); return true;
-                case NoiseNodeType.Constant1__NoIn__x: metadata = new(0, 1, false); return true;
-                case NoiseNodeType.Constant2__NoIn__x_y: metadata = new(0, 2, false); return true;
-                case NoiseNodeType.Constant3__NoIn__x_y_z: metadata = new(0, 3, false); return true;
-                case NoiseNodeType.Perlin2D_noise__x_y__noise: metadata = new(2, 1, true); return true;
-                case NoiseNodeType.Perlin3D_noise__x_y_z__noise: metadata = new(3, 1, true); return true;
-                case NoiseNodeType.Cellular2_noise__x_y__center_edge: metadata = new(2, 2, true); return true;
-                case NoiseNodeType.Cellular3_noise__x_y_z__center_edge: metadata = new(3, 2, true); return true;
-                case NoiseNodeType.Add__a_b__sum: metadata = new(2, 1, false); return true;
-                case NoiseNodeType.Negate__value__negated: metadata = new(1, 1, false); return true;
-                case NoiseNodeType.Multiply__a_b__product: metadata = new(2, 1, false); return true;
-                case NoiseNodeType.Inverse__value__inverse: metadata = new(1, 1, false); return true;
-                case NoiseNodeType.Min__a_b__min: metadata = new(2, 1, false); return true;
-                case NoiseNodeType.Max__a_b__max: metadata = new(2, 1, false); return true;
-                case NoiseNodeType.Pow__value_power__result: metadata = new(2, 1, false); return true;
-                case NoiseNodeType.SmoothStep01__value__result: metadata = new(1, 1, false); return true;
-                case NoiseNodeType.Lerp__a_b_t__result: metadata = new(3, 1, false); return true;
-                case NoiseNodeType.Floor__value__result: metadata = new(1, 1, false); return true;
-                default: metadata = default; return false;
-            }
+                NoiseNodeType.Coords1__NoIn__x => new(0, 1, false),
+                NoiseNodeType.Coords2__NoIn__x_y => new(0, 2, false),
+                NoiseNodeType.Coords3__NoIn__x_y_z => new(0, 3, false),
+                NoiseNodeType.Constant1__NoIn__x => new(0, 1, false),
+                NoiseNodeType.Constant2__NoIn__x_y => new(0, 2, false),
+                NoiseNodeType.Constant3__NoIn__x_y_z => new(0, 3, false),
+                NoiseNodeType.Perlin2D_noise__x_y__noise => new(2, 1, true),
+                NoiseNodeType.Perlin3D_noise__x_y_z__noise => new(3, 1, true),
+                NoiseNodeType.Cellular2_noise__x_y__center_edge => new(2, 2, true),
+                NoiseNodeType.Cellular3_noise__x_y_z__center_edge => new(3, 2, true),
+                NoiseNodeType.Add__a_b__sum => new(2, 1, false),
+                NoiseNodeType.Negate__value__negated => new(1, 1, false),
+                NoiseNodeType.Multiply__a_b__product => new(2, 1, false),
+                NoiseNodeType.Inverse__value__inverse => new(1, 1, false),
+                NoiseNodeType.Min__a_b__min => new(2, 1, false),
+                NoiseNodeType.Max__a_b__max => new(2, 1, false),
+                NoiseNodeType.Pow__value_power__result => new(2, 1, false),
+                NoiseNodeType.SmoothStep01__value__result => new(1, 1, false),
+                NoiseNodeType.Lerp__a_b_t__result => new(3, 1, false),
+                NoiseNodeType.Floor__value__result => new(1, 1, false),
+                _ => default
+            };
+
+            // return true if metadata isn't default
+            return metadata.InputCount > 0 | metadata.OutputCount > 0;
         }
 
         /// <summary>
@@ -331,18 +330,18 @@ namespace NoiseDotNet
                 CountChannels(nameParts[1]),
                 CountChannels(nameParts[2]),
                 nameParts[0].EndsWith("_noise", StringComparison.Ordinal));
-        }
 
-        static int CountChannels(string channels)
-        {
-            if (channels == "NoIn")
-                return 0;
+            static int CountChannels(string channels)
+            {
+                if (channels == "NoIn")
+                    return 0;
 
-            int count = 1;
-            foreach (char character in channels)
-                if (character == '_')
-                    count++;
-            return count;
+                int count = 1;
+                foreach (char character in channels)
+                    if (character == '_')
+                        count++;
+                return count;
+            }
         }
     }
 }

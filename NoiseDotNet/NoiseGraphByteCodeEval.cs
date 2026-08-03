@@ -534,7 +534,7 @@ namespace NoiseDotNet
         }
 
         internal static bool IsExecutable(NoiseNodeType type) =>
-            type != NoiseNodeType.Null && NoiseNodeTypeExtensions.IsDefined(type);
+            type != NoiseNodeType.Null && NoiseNodeTypeExtensions.IsExecutable(type);
 
     }
 }
