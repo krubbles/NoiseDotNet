@@ -32,10 +32,9 @@ namespace NoiseDotNet
     {
         public const byte CopyOpCode = byte.MaxValue;
 
-        // The largest input/output register count of any NoiseNodeType (currently Lerp__a_b_t__result
-        // and the two Cellular noise types, respectively). Bump these if a node type needs more.
-        const int MaxInputCount = 3;
-        const int MaxOutputCount = 2;
+        // bump if needed
+        const int MaxInputCount = 4;
+        const int MaxOutputCount = 4;
 
         /// <summary>
         /// Evaluates compiled NoiseNode bytecode over a batch of values.
