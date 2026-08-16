@@ -12,6 +12,11 @@ namespace NoiseDotNet
         public NoiseNodeType Type { get; }
 
         /// <summary>
+        /// The number of coordinates (1 for X, 2 for XY, 3 for XYZ) this node's value depends on.
+        /// </summary>
+        public int DimensionCount { get; }
+
+        /// <summary>
         /// ConstantValues[i] = the value of the i-th channel for a constant noise node. Only valid for constant noise nodes, otherwise empty.
         /// </summary>
         public ReadOnlySpan<float> ConstantValues => _constantValues.AsSpan();
@@ -39,6 +44,22 @@ namespace NoiseDotNet
                     $"Internal error creating NoiseNode of type {type}: " +
                     $"received {_inputs.Length} input channels, but expected {type.GetInputCount()}.");
             }
+
+            DimensionCount = type switch
+            {
+                NoiseNodeType.Coords1__NoIn__x => 1,
+                NoiseNodeType.Coords2__NoIn__x_y => 2,
+                NoiseNodeType.Coords3__NoIn__x_y_z => 3,
+                _ => MaxInputDimensionCount(_inputs),
+            };
+
+            static int MaxInputDimensionCount(NoiseScalar[] inputs)
+            {
+                int dimensionCount = 0;
+                foreach (NoiseScalar input in inputs)
+                    dimensionCount = Math.Max(dimensionCount, input.Node.DimensionCount);
+                return dimensionCount;
+            }
         }
 
         /// <summary>
@@ -57,6 +78,8 @@ namespace NoiseDotNet
                     $"Internal error creating constant NoiseNode of type {type}: " +
                     $"received {_constantValues.Length} constant values, but expected {type.GetOutputCount()}.");
             }
+
+            DimensionCount = 0;
         }
 
         /// <summary>
@@ -126,7 +149,6 @@ namespace NoiseDotNet
                     "Use NoiseNode.Channel(int) to access a specific channel of a NoiseNode with a different number of output channels.");
             }
         }
-
     }
 
     /// <summary>

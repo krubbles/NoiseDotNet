@@ -211,6 +211,5 @@ namespace NoiseDotNet
             if (output.Length != expectedLength)
                 throw new ArgumentException($"Expected buffer length {output.Length} to equal coordinate buffer length {expectedLength}.");
         }
-
     }
 }
